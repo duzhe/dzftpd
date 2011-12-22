@@ -1,0 +1,10 @@
+a.out
+dzftp
+tags
+cscope.out
+glob:del/*
+glob:old/*
+glob:*~
+glob:*.swp
+glob:*.s
+glob:*.o

@@ -1,0 +1,7 @@
+update: tags cscope.out
+tags:*.cpp *.h
+	ctags -R
+cscope.out: *.cpp *.h
+	cscope -Rbk
+	
+
