@@ -4,12 +4,13 @@
 
 class ftp_server_internal;
 class ftp_client;
+class ftp_config;
 class ftp_server
 {
 public:
 	ftp_server();
 	~ftp_server();
-	int run();
+	int run(ftp_config *conf);
 //	int serve_it(ftp_client *);
 //	int serve_it_standalone(ftp_client *client);
 private:

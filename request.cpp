@@ -14,61 +14,66 @@ static inline bool legal_command_length(int length)
 	return false;
 }
 
-char * strnstr(const char *s, const char *find, size_t slen)
-{
-	char c, sc;
-	size_t len;
+//char * strnstr(const char *s, const char *find, size_t slen)
+//{
+//	char c, sc;
+//	size_t len;
+//
+//	if ((c = *find++) != '\0') {
+//		len = strlen(find);
+//		do {
+//			do {
+//				if (slen-- < 1 || (sc = *s++) == '\0')
+//					return (NULL);
+//			} while (sc != c);
+//			if (len > slen)
+//				return (NULL);
+//		} while (strncmp(s, find, len) != 0);
+//		s--;
+//	}
+//	return ((char *)s);
+//}
 
-	if ((c = *find++) != '\0') {
-		len = strlen(find);
-		do {
-			do {
-				if (slen-- < 1 || (sc = *s++) == '\0')
-					return (NULL);
-			} while (sc != c);
-			if (len > slen)
-				return (NULL);
-		} while (strncmp(s, find, len) != 0);
-		s--;
-	}
-	return ((char *)s);
-}
 
-size_t request::parse_from_commandline(const char *commandline, size_t data_length)
+int request::parse_from_line(const char *line)
 {
-	const char *commandline_end = strnstr(commandline, "\r\n", data_length);
-	if(commandline_end == NULL){
-		return 0;
+	if(line == NULL){
+		return -1;
 	}
-	const char *command_end = commandline;
-	for(; *command_end != ' ' && *command_end != '\r'; ++command_end); // do nothing in loop
-	int command_length = command_end - commandline;
+//	const char *line_end = strnstr(line, "\r\n", data_length);
+//	if(line_end == NULL){
+//		return 0;
+//	}
+	const char *command_end = line;
+	for(; *command_end != ' ' && *command_end != '\r'; ++command_end)
+		; 
+	int command_length = command_end - line;
 	if(!legal_command_length(command_length ) ){
 		return -1;
 	}
 	
 	// copy command
-//	memcpy(command, commandline, command_length );
-//	command[command_length] = '\0';
 	for(int i=0; i< command_length; ++i){
-		if( !isalpha( commandline[i] ) ){
+		if( !isalpha( line[i] ) ){
 			return -1;
 		}
-		command[i] = toupper(commandline[i] );
+		command[i] = toupper(line[i] );
 	}
 	command[command_length] = '\0';
 		
 
 	// copy param
-	if( *command_end == ' '){
-		int params_length = commandline_end -(command_end+1);
+	const char *param_begin = command_end;
+	while( isspace(*param_begin) ){
+		param_begin++;
+	}
+	if( *param_begin != '\0'){
+		int params_length = strlen(param_begin);
 		params = (char *)malloc(params_length +1);
 		if(params == NULL){
 			return -1;
 		}
-		memcpy(params, command_end+1, params_length);
-		params[params_length] = '\0' ;
+		memcpy(params, param_begin, params_length+1); // include the '\0'
 	}
-	return (size_t)(commandline_end +2 - commandline);// 2 is the length of "\r\n"
+	return 0;
 }
-

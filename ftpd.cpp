@@ -1,7 +1,4 @@
 #include "global.h"
-#include "ftpd.h"
-#include "ftp_server.h"
-#include "ftp_client.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -9,6 +6,10 @@
 #include <string.h>
 #include <strings.h>
 #include <string>
+#include "ftpd.h"
+#include "ftp_server.h"
+#include "ftp_client.h"
+#include "ftp_config.h"
 
 class ftpd_internal
 {

@@ -2,10 +2,15 @@
 #include "ftp_server.h"
 #include "ftp_client.h"
 #include "ftp_config.h"
+#include "ftp_user.h"
 #include "request.h"
 #include <unistd.h>
 #include <string.h>
 #include <map>
+#include <stdlib.h> /* for free */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>  /* for htonl */
 
 struct client_status
 {
@@ -23,13 +28,17 @@ struct client_status
 	~client_status()
 	{
 		if(username != NULL){
-			free(username);
+			free((void*)username);
 		}
+	}
+	bool logged_in()
+	{
+		return login;
 	}
 	int set_username(const char *username)
 	{
 		if(this->username != NULL){
-			free(this->username);
+			free((void *)(this->username) );
 		}
 		this->username = strdup(username);
 		return 0;
@@ -88,7 +97,7 @@ int ftp_server_internal::serve()
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 //	servaddr.sin_port = htons(FTP_PORT);
-	servaddr.sin_port = htons(config->listen_port);
+	servaddr.sin_port = htons(conf->listen_port);
 
 	bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr) );
 
@@ -96,8 +105,8 @@ int ftp_server_internal::serve()
 
 	for( ; ; ){
 		client_ctrlfd = accept(listenfd, (struct sockaddr *)NULL, NULL);
-		ftp_client *client = new client(client_ctrlfd);
-		serve_it(&client);
+		ftp_client *client = new ftp_client(client_ctrlfd);
+		serve_it(client);
 		//serve_it_standalone(client);
 	}
 		
@@ -121,10 +130,10 @@ int ftp_server_internal::serve_it(ftp_client *client)
 	return 0;
 }
 
-int ftp_server::serve_it_standalone(ftp_client *client)
-{
-	return internal->serve_it_standalone(client);
-}
+//int ftp_server::serve_it_standalone(ftp_client *client)
+//{
+//	return internal->serve_it_standalone(client);
+//}
 
 int ftp_server_internal::serve_it_standalone(ftp_client *client)
 {
@@ -172,8 +181,10 @@ int ftp_server_internal::do_welcome(ftp_client *client)
 
 int ftp_server_internal::command_user(ftp_client *client, const char *param)
 {
-	if(clients_status[client].logged_in() ){
-		if(client_status[client].sameuser(param) ){
+	const client_status *status = clinet->get_status();
+	if(status->state >= client_status::loggedin){
+		ftp_user *user = client->get_user();
+		if(user->sameuser(param) ){
 			client->response(331, REPLY_ANY_PSWD);
 		}
 		else{
