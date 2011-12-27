@@ -6,6 +6,7 @@
 #include <string.h>
 #include <locale>
 
+
 static inline bool legal_command_length(int length)
 {
 	if(length == 3 || length == 4){
@@ -39,6 +40,10 @@ int request::parse_from_line(const char *line)
 {
 	if(line == NULL){
 		return -1;
+	}
+	if(params != NULL){
+		free(params);
+		params = NULL;
 	}
 //	const char *line_end = strnstr(line, "\r\n", data_length);
 //	if(line_end == NULL){

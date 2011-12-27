@@ -8,8 +8,12 @@
 ftp_client_ctrlfile::ftp_client_ctrlfile(int client_ctrlfd)
 {
 	fd = client_ctrlfd;
+
 	write_buf_left = sizeof(write_buf);
 	write_buf_pos = write_buf;
+
+	read_buf_left = sizeof(read_buf);
+	read_buf_pos = read_buf;
 }
 
 ftp_client_ctrlfile::~ftp_client_ctrlfile()
@@ -23,6 +27,7 @@ int ftp_client_ctrlfile::close()
 		::close(fd);
 		fd = -1;
 	}
+	return 0;
 }
 
 int ftp_client_ctrlfile::puts(const char *message)
@@ -32,6 +37,7 @@ int ftp_client_ctrlfile::puts(const char *message)
 
 int ftp_client_ctrlfile::printf(const char *format, ...)
 {
+	DEBUG("client printf\n");
 	char buf[MAX_RESPONSE_LENGTH];
 
 	va_list va;
@@ -42,10 +48,10 @@ int ftp_client_ctrlfile::printf(const char *format, ...)
 	if(length < 0){
 		return -1;
 	}
-	if(length > write_buf_left){
+	if((size_t)length > write_buf_left){
 		flush();
 	}
-	if(length > write_buf_left){
+	if((size_t)length > write_buf_left){
 		return -1;
 	}
 	memcpy(write_buf_pos, buf, length);
@@ -56,6 +62,7 @@ int ftp_client_ctrlfile::printf(const char *format, ...)
 
 int ftp_client_ctrlfile::flush()
 {
+	DEBUG("client flush\n");
 	int return_code = ::write(fd, write_buf, write_buf_pos - write_buf);
 	if(return_code == -1){
 		return  -1;
@@ -92,9 +99,13 @@ int ftp_client_ctrlfile::readline(char *linebuf)
 				
 				return 0;
 			}
+			++line_end;
 		}
 		read();
 	}
+#ifdef DEBUG
+	this->printf("%s\r\n",linebuf);
+#endif
 	return 0;// will never run to here;
 }
 

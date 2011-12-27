@@ -38,3 +38,6 @@ typedef int command_id_t;
 
 
 typedef unsigned int response_code_t;
+
+#include <stdio.h>
+#define DEBUG ::printf

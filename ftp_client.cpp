@@ -1,6 +1,7 @@
 #include "global.h"
 #include "ftp_client.h"
 #include "request.h"
+#include "ftp_clientinfo.h"
 //#include <unistd.h>
 //#include <string.h> /* for memmove */
 #include <vector>
@@ -28,6 +29,8 @@ private:
 	std::vector<const char *> response_list;
 	typedef std::vector<const char *>::iterator Iter;
 	response_code_t response_code;
+public:
+	ftp_clientinfo info;
 };
 
 
@@ -152,7 +155,7 @@ int ftp_client_internal::do_response()
 		ctrlfile->printf("%3d%c%s\r\n", response_code, 
 				iter+1 == response_list.end()? ' ':'-',
 				*iter);
-	};
+	}
 	ctrlfile->flush();
 	for(Iter iter = response_list.begin(); iter != response_list.end(); ++iter){
 		free( (void*)(*iter) );
@@ -161,4 +164,13 @@ int ftp_client_internal::do_response()
 	return 0;
 }
 
+ftp_clientinfo *ftp_client::get_clientinfo()
+{
+	return &(internal->info);
+}
+
+client_status ftp_client::get_status()
+{
+	return ready;
+}
 

@@ -2,8 +2,9 @@
 #include "ftp_server.h"
 #include "ftp_client.h"
 #include "ftp_config.h"
-#include "ftp_user.h"
+#include "ftp_clientinfo.h"
 #include "request.h"
+#include "messages.h"
 #include <unistd.h>
 #include <string.h>
 #include <map>
@@ -12,38 +13,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>  /* for htonl */
 
-struct client_status
-{
-	bool 			login;
-	const char 		*username;
-	bool			pasv;
-	bool			data_connected;
-	client_status()
-	{
-		login = false;
-		username = NULL;
-		pasv = false;
-		data_connected = false;
-	}
-	~client_status()
-	{
-		if(username != NULL){
-			free((void*)username);
-		}
-	}
-	bool logged_in()
-	{
-		return login;
-	}
-	int set_username(const char *username)
-	{
-		if(this->username != NULL){
-			free((void *)(this->username) );
-		}
-		this->username = strdup(username);
-		return 0;
-	}
-}
 
 class ftp_server_internal
 {
@@ -55,11 +24,12 @@ private:
 	int serve_it(ftp_client *client);
 	int serve_it_standalone(ftp_client *client);
 	int process_request(ftp_client *client, request *r);
-	int do_welcome(ftp_client *client);
+	int do_wellcome(ftp_client *client);
 	int command_user(ftp_client *client, const char *param);
+	int command_pass(ftp_client *client, const char *param);
 	int command_not_support(ftp_client *client);
 private:
-	std::map<ftp_client *, client_status> clients_status;
+//	std::map<ftp_client *, client_status> clients_status;
 	ftp_config *conf;
 	int listenfd;
 };
@@ -115,7 +85,6 @@ int ftp_server_internal::serve()
 
 int ftp_server_internal::serve_it(ftp_client *client)
 {
-#ifdef FORK  /* test for automake */
 	pid_t pid;
 	// child process serve the client and exit
 	if( (pid= fork() ) == 0){
@@ -126,18 +95,12 @@ int ftp_server_internal::serve_it(ftp_client *client)
 	}
 	// parent process close the client and return to wait another client;
 	client->close();
-#endif
 	return 0;
 }
 
-//int ftp_server::serve_it_standalone(ftp_client *client)
-//{
-//	return internal->serve_it_standalone(client);
-//}
-
 int ftp_server_internal::serve_it_standalone(ftp_client *client)
 {
-	do_welcome(client);
+	do_wellcome(client);
 	request r;
 	for(;;){
 		client->wait_request(&r);
@@ -159,32 +122,36 @@ int ftp_server_internal::serve_it_standalone(ftp_client *client)
 	}
 int ftp_server_internal::process_request(ftp_client *client, request *r)
 {
+	DEBUG("process_request\n");
 	int return_code = 0;
-	while(true){
+//	while(true){
 		const char *command = r->command;
 		int result = 0;
 
 		PROCESS_MAP_BEGIN()
 		PROCESS_MAP("USER", command_user)
-//		PROCESS_MAP("PASS", command_pass)
+		PROCESS_MAP("PASS", command_pass)
 //		PROCESS_MAP("PASV", command_pasv)
 		PROCESS_MAP_END()
 
-	}
+//	}
 	return return_code;
 }
 
-int ftp_server_internal::do_welcome(ftp_client *client)
+int ftp_server_internal::do_wellcome(ftp_client *client)
 {
+	client->response(220, "wellcome");
+	client->do_response();
 	return 0;
 }
 
 int ftp_server_internal::command_user(ftp_client *client, const char *param)
 {
-	const client_status *status = clinet->get_status();
-	if(status->state >= client_status::loggedin){
-		ftp_user *user = client->get_user();
-		if(user->sameuser(param) ){
+	DEBUG("command user\n");
+	const client_status state = client->get_status();
+	ftp_clientinfo *info = client->get_clientinfo();
+	if(state >= loggedin){
+		if(strcmp(info->get_username(), param) == 0 ){
 			client->response(331, REPLY_ANY_PSWD);
 		}
 		else{
@@ -194,15 +161,23 @@ int ftp_server_internal::command_user(ftp_client *client, const char *param)
 	else if(param == NULL || *param == '\0' ){
 		client->response(332, REPLY_NEED_USER);
 	}
-	else if(!valid_username(param) ){
-		client->response(530, REPLY_NOT_LOGGED_IN);
+//	else if(!valid_username(param) ){
+//		client->response(530, REPLY_NOT_LOGGED_IN);
 	else{
-		clients_status[client].set_username(param);
+		info->set_username(param);
 		client->response(331, REPLY_NEED_PSWD);
 	}
+	client->do_response();
 	return 0;
 }
 
+int ftp_server_internal::command_pass(ftp_client *client, const char *param)
+{
+	DEBUG("command pass\n");
+	client->response(230 ,REPLY_LOGGED_IN);
+	client->do_response();
+	return 0;
+}
 int ftp_server_internal::command_not_support(ftp_client *client)
 {
 	return 0;

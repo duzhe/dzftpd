@@ -4,7 +4,7 @@
 class request
 {
 public:
-//	request();
+	request():params(NULL){};
 //	~request();
 
 //	size_t parse_from_commandline(const char *commandbuf, size_t data_length);

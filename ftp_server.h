@@ -1,10 +1,8 @@
 #ifndef DZFTP_FTP_SERVER_H_INCLUDE
 #define DZFTP_FTP_SERVER_H_INCLUDE
-
+#include "classes.h"
 
 class ftp_server_internal;
-class ftp_client;
-class ftp_config;
 class ftp_server
 {
 public:
