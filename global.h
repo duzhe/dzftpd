@@ -41,3 +41,5 @@ typedef unsigned int response_code_t;
 
 #include <stdio.h>
 #define DEBUG ::printf
+
+#include "classes.h"

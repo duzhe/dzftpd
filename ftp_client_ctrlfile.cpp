@@ -37,7 +37,6 @@ int ftp_client_ctrlfile::puts(const char *message)
 
 int ftp_client_ctrlfile::printf(const char *format, ...)
 {
-	DEBUG("client printf\n");
 	char buf[MAX_RESPONSE_LENGTH];
 
 	va_list va;
@@ -45,6 +44,7 @@ int ftp_client_ctrlfile::printf(const char *format, ...)
 	int length = vsnprintf(buf, sizeof(buf), format, va);
 	va_end(va);
 
+	DEBUG("Client printf:%s\n", buf);
 	if(length < 0){
 		return -1;
 	}
@@ -101,7 +101,10 @@ int ftp_client_ctrlfile::readline(char *linebuf)
 			}
 			++line_end;
 		}
-		read();
+		int ret_val = read();
+		if(ret_val != 0){
+			return ret_val;
+		}
 	}
 #ifdef DEBUG
 	this->printf("%s\r\n",linebuf);

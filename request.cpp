@@ -9,6 +9,7 @@
 
 static inline bool legal_command_length(int length)
 {
+	DEBUG("Command length:%d\n", length);
 	if(length == 3 || length == 4){
 		return true;
 	}
@@ -39,6 +40,7 @@ static inline bool legal_command_length(int length)
 int request::parse_from_line(const char *line)
 {
 	if(line == NULL){
+		DEBUG("Error: parse_from_lien :line is NULL\n");
 		return -1;
 	}
 	if(params != NULL){
@@ -50,10 +52,11 @@ int request::parse_from_line(const char *line)
 //		return 0;
 //	}
 	const char *command_end = line;
-	for(; *command_end != ' ' && *command_end != '\r'; ++command_end)
+	for(; *command_end != ' ' && *command_end != '\0'; ++command_end)
 		; 
 	int command_length = command_end - line;
 	if(!legal_command_length(command_length ) ){
+		DEBUG("Error: parse_from_line: legal_command_length\n");
 		return -1;
 	}
 	
@@ -65,6 +68,7 @@ int request::parse_from_line(const char *line)
 		command[i] = toupper(line[i] );
 	}
 	command[command_length] = '\0';
+	DEBUG("Command is:%s\n", command);
 		
 
 	// copy param

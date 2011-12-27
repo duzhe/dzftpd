@@ -1,13 +1,14 @@
 #ifndef DZFTP_FTP_CLIENT_H_INCLUDE
 #define DZFTP_FTP_CLIENT_H_INCLUDE
-#include "classes.h"
 
 enum client_status 
 {
 	ready,
 	loggedin,
-	dataconnected,
+	pasv,
+	port,
 };
+
 class ftp_client_internal;
 class ftp_client
 {
@@ -26,5 +27,6 @@ private:
 	ftp_client_internal *internal;
 };
 
+#define ERROR_CLIENT_CLOSED -2
 #endif
 

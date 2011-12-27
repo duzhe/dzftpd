@@ -103,35 +103,13 @@ ftp_client_internal::~ftp_client_internal()
 int ftp_client_internal::wait_request(request *r)
 {
 	char request_line[MAX_REQUEST_LENGTH];
-	ctrlfile->readline(request_line);
-//	while(true){
-//		int read_count = read(ctrlfd, read_buf+data_in_read_buf,
-//				sizeof(read_buf) -1 -data_in_read_buf);
-//		data_in_read_buf += read_count;
-//		if( parse_request(r) != NOT_COMPLETE){
-//			continue;
-//		}
-//	}
-	r->parse_from_line(request_line);
-	return 0;
+	int ret_val = ctrlfile->readline(request_line);
+	if(ret_val != 0){
+		return ERROR_CLIENT_CLOSED;
+	}
+	DEBUG("Request Line:%s\n", request_line);
+	return r->parse_from_line(request_line);
 }
-
-//int ftp_client_internal::parse_request(request *r)
-//{
-//	int used_data_count =  r->parse_from_commandline(read_buf, data_in_read_buf);
-//	if(used_data_count == 0){
-//		return NOT_COMPLETE;
-//	}
-//	else if(used_data_count > data_in_read_buf){
-//		// need log error
-//		return -1;
-//	}
-//	data_in_read_buf -= used_data_count;
-//	if(data_in_read_buf != 0){
-//		memmove(read_buf, read_buf+used_data_count, data_in_read_buf);
-//	}
-//	return 0;
-//}
 
 int ftp_client_internal::response(response_code_t code, const char *message)
 {
