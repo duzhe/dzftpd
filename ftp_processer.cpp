@@ -37,6 +37,7 @@ static int command_pass(ftp_client *client, const char *param)
 	DEBUG("command pass\n");
 	client->response(230 ,REPLY_LOGGED_IN);
 	client->do_response();
+	client->set_status(logged_in);
 	return 0;
 }
 
@@ -56,7 +57,25 @@ static int command_quit(ftp_client *client, const char *param)
 
 static int command_pasv(ftp_client *client, const char *param)
 {
-	client->
+	const client_status state = client->get_status();
+	ftp_clientinfo *info = client->get_clientinfo();
+	if(status == ready){
+		client->response(530, REPLY_NOT_LOGGED_IN);
+	}
+	else{
+		ftp_client_datafile *dfile = new ftp_client_datafile;
+		dfile->mode = PASV;
+		unsigned short port = dfile->random_bind();
+		client->response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
+				get_serve_addr(), (int)((unsigned char *)(&port)[0]),
+				(int)((unsigned char*)(&port)[1]) );
+		client->set_status(pasv_waiting);
+	}
+	client->do_response();
+	return 0;
+}
+
+		
 #define PROCESS_MAP_BEGIN() if(0){}
 
 #define PROCESS_MAP(COMMAND, PROCESS_FUNCTION) \
