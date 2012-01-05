@@ -8,3 +8,4 @@ glob:*~
 glob:*.swp
 glob:*.s
 glob:*.o
+glob:*.orig

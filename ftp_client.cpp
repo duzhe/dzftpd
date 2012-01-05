@@ -1,9 +1,7 @@
 #include "global.h"
 #include "ftp_client.h"
 #include "request.h"
-#include "ftp_clientinfo.h"
-//#include <unistd.h>
-//#include <string.h> /* for memmove */
+//#include "ftp_clientinfo.h"
 #include <vector>
 #include "ftp_client_ctrlfile.h"
 #include <stdio.h>
@@ -22,25 +20,16 @@ public:
 	int do_response();
 private:
 	int parse_request(request *r);
-//	int ctrlfd;
-
 	ftp_client_ctrlfile *ctrlfile;
-	//ftp_client_datafile *datafile;
 	std::vector<const char *> response_list;
 	typedef std::vector<const char *>::iterator Iter;
 	response_code_t response_code;
-public:
-	ftp_clientinfo info;
 };
 
 
 ftp_client::ftp_client(int client_ctrlfd)
 {
 	internal = new ftp_client_internal(client_ctrlfd);
-//	internal->ctrlfile = new ftp_client_ctrlfile(client_ctrlfd);
-//	internal->ctrlfd = client_ctrlfd;
-//	internal->data_in_read_buf = 0;
-//	internal->data_in_write_buf = 0;
 }
 
 
@@ -55,11 +44,6 @@ ftp_client::~ftp_client()
 
 int ftp_client::close()
 {
-//	if(internal != NULL){
-//		ctrlfile->close();
-//		delete ctrlfile;
-//		ctrlfile = NULL;
-//	}
 	return 0;
 }
 
@@ -87,6 +71,8 @@ int ftp_client::wait_request(request *r)
 {
 	return internal->wait_request(r);
 }
+
+//---------vvvvvvvvvvvv------- internal methods -------vvvvvvvvvvvvvv---------
 
 ftp_client_internal::ftp_client_internal(int ctrlfd)
 {
@@ -142,13 +128,13 @@ int ftp_client_internal::do_response()
 	return 0;
 }
 
-ftp_clientinfo *ftp_client::get_clientinfo()
-{
-	return &(internal->info);
-}
-
-client_status ftp_client::get_status()
-{
-	return ready;
-}
-
+//ftp_clientinfo *ftp_client::get_clientinfo()
+//{
+//	return &(internal->info);
+//}
+//
+//client_status ftp_client::get_status()
+//{
+//	return ready;
+//}
+//

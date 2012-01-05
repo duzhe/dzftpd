@@ -43,3 +43,5 @@ typedef unsigned int response_code_t;
 #define DEBUG ::printf
 
 #include "classes.h"
+
+const char *get_serve_addr();
