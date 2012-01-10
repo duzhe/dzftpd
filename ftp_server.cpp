@@ -32,8 +32,11 @@ public:
 private:
 	int process_request(ftp_client *client, request *r);
 	int do_welcome(ftp_client *client);
+	int need_loggedin(ftp_client *client);
+	int command_not_support(ftp_client *client);
 	int command_user(ftp_client *client, const char *param);
 	int command_pass(ftp_client *client, const char *param);
+	int command_port(ftp_client *client, const char *param);
 	int command_pasv(ftp_client *client, const char *param);
 	int command_quit(ftp_client *client, const char *param);
 	int command_pwd( ftp_client *client, const char *param);
@@ -44,7 +47,6 @@ private:
 	int command_stor(ftp_client *client, const char *param);
 	int command_noop(ftp_client *client, const char *param);
 	int command_list(ftp_client *client, const char *param);
-	int command_not_support(ftp_client *client);
 
 	serve_state get_state();
 private:
@@ -73,17 +75,53 @@ int ftp_server::serve_it(int client_ctrlfd)
 
 //---------vvvvvvvvvvvv------- internal methods -------vvvvvvvvvvvvvv---------
 
-#define PROCESS_MAP_BEGIN() if(0){}
+//#define PROCESS_MAP_BEGIN() if(0){}
+//
+//#define PROCESS_MAP(COMMAND, PROCESS_FUNCTION) \
+//	else if(strcmp(command, COMMAND) == 0 ) { \
+//		ret_val = PROCESS_FUNCTION(client, r->params); \
+//	}
+//#define PROCESS_MAP_END(NOT_FOUND_FUNCTION) \
+//	else{ \
+//		DEBUG("Command Not Support:%s %s\n", command, r->params == NULL?"":r->params);	\
+//		ret_val = NOT_FOUND_FUNCTION(client);\
+//	}
+
+//#define SWITCH_STATE() switch(state){
+//
+//#define ON_STATE(STATE) case STATE: if(0);
+//
+//#define END_STATE(NOT_IN_FUNCTION) \
+//	DEBUG("Command Not Support:%s %s\n", command, r->params == NULL?"":r->params);	\
+//	ret_val = NOT_FOUND_FUNCTION(client);\
+//	break;
+//#define PROCESS_MAP_END() \
+//	default: \
+//		assert(false); \
+//		break; \
+//}
+#define PROCESS_MAP_BEGIN()	\
+do{
+
+#define STATE_BEGIN(STATE)	\
+	if(state >= STATE){ \
+		if(0){}
 
 #define PROCESS_MAP(COMMAND, PROCESS_FUNCTION) \
-	else if(strcmp(command, COMMAND) == 0 ) { \
-		ret_val = PROCESS_FUNCTION(client, r->params); \
+		else if(strcmp(command, COMMAND) == 0 ) { \
+			ret_val = PROCESS_FUNCTION(client, r->params); \
+			break; \
+		}
+#define STATE_END(STATE, NOT_FOUND_FUNCTION) \
+		else if(state == STATE){ \
+			DEBUG("Command Not Support:%s %s\n", command, r->params == NULL?"":r->params);	\
+			ret_val = NOT_FOUND_FUNCTION(client);\
+			break; \
+		}	\
 	}
-#define PROCESS_MAP_END(NOT_FOUND_FUNCTION) \
-	else{ \
-		DEBUG("Command Not Support:%s %s\n", command, r->params == NULL?"":r->params);	\
-		ret_val = NOT_FOUND_FUNCTION(client);\
-	}
+
+#define PROCESS_MAP_END() \
+}while(0);
 
 int ftp_server_internal::process_request(ftp_client *client, request *r)
 {
@@ -91,19 +129,26 @@ int ftp_server_internal::process_request(ftp_client *client, request *r)
 	const char *command = r->command;
 
 	PROCESS_MAP_BEGIN()
+	STATE_BEGIN(ready)
 	PROCESS_MAP("USER", command_user)
 	PROCESS_MAP("PASS", command_pass)
 	PROCESS_MAP("QUIT", command_quit)
-	PROCESS_MAP("PASV", command_pasv)
-	PROCESS_MAP("PWD", 	command_pwd)
 	PROCESS_MAP("TYPE", command_type)
 	PROCESS_MAP("MODE", command_mode)
 	PROCESS_MAP("STRU", command_stru)
+	STATE_END(ready, need_loggedin)
+	STATE_BEGIN(loggedin)
+	PROCESS_MAP("PASV", command_pasv)
+	PROCESS_MAP("PORT", command_port)
+	PROCESS_MAP("PWD", 	command_pwd)
+	PROCESS_MAP("NOOP", command_noop)
+	STATE_END(loggedin, command_not_support)
+	STATE_BEGIN(datacnn_wait)
 	PROCESS_MAP("RETR", command_retr)
 	PROCESS_MAP("STOR", command_stor)
-	PROCESS_MAP("NOOP", command_noop)
 	PROCESS_MAP("LIST", command_list)
-	PROCESS_MAP_END(command_not_support)
+	STATE_END(datacnn_wait, command_not_support)
+	PROCESS_MAP_END()
 
 	return ret_val;
 }
@@ -184,6 +229,13 @@ int ftp_server_internal::command_not_support(ftp_client *client)
 	return 0;
 }
 
+int ftp_server_internal::need_loggedin(ftp_client *client)
+{
+	client->response(530, REPLY_NOT_LOGGED_IN);
+	client->do_response();
+	return 0;
+}
+
 int ftp_server_internal::command_quit(ftp_client *client, const char *param)
 {
 	client->response(221, REPLY_BYE);
@@ -212,6 +264,12 @@ int ftp_server_internal::command_pasv(ftp_client *client, const char *param)
 }
 
 		
+int ftp_server_internal::command_port(ftp_client *client, const char *param)
+{
+	client->response(502, REPLY_NOT_IMPLEMENTED);
+	client->do_response();
+	return 0;
+}
 
 int ftp_server_internal::command_pwd(ftp_client *client, const char *param)
 {
