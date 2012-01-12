@@ -1,10 +1,23 @@
 #include "global.h"
 #include "ftp_client_datafile.h"
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <strings.h> /* for bzero */
 
+ftp_client_datafile::ftp_client_datafile()
+{
+	listenfd = -1;
+	datafd = -1;
+}
+
+void ftp_client_datafile::reset()
+{
+	DEBUG("ftp_client_datafile::reset() not implement\n");
+}
 
 unsigned short ftp_client_datafile::random_bind()
 {
@@ -27,6 +40,11 @@ unsigned short ftp_client_datafile::random_bind()
 		return 0;
 	}
 
+	ret_val = listen(listenfd, 1);
+	if(ret_val == -1){
+		return 0;
+	}
+
 	socklen_t addrsize = sizeof(servaddr);
 
 	ret_val = getsockname(listenfd, (struct sockaddr *)&servaddr, &addrsize);
@@ -36,4 +54,46 @@ unsigned short ftp_client_datafile::random_bind()
 
 	DEBUG("Before random_bind return\n");
 	return (servaddr.sin_port);
+}
+
+int ftp_client_datafile::write_file(const char *filename)
+{
+	if(datafd == -1){
+		return NO_DATA_CONNECTION;
+	}
+	int file = open(filename, O_RDONLY);
+	if(file == -1){
+		return OPEN_FILE_ERROR;
+	}
+	char buf[1024];
+	while(true){
+		ssize_t ret_val = ::read(file, buf, 1024);
+		if(ret_val == -1){
+			close(file);
+			close(datafd);
+			datafd = -1;
+			return READ_FILE_ERROR;
+		}
+		if(ret_val == 0){
+			close(file);
+			close(datafd);
+			datafd = -1;
+			return 0;
+		}
+		
+		ret_val = write(datafd, buf, ret_val);
+		if(ret_val == -1){
+			close(file);
+			close(datafd);
+			datafd = -1;
+			return CLIENT_CLOSE_DATA_CONNECTION;
+		}
+	}
+}
+
+void ftp_client_datafile::accept_connection()
+{
+	datafd = ::accept(listenfd, NULL, NULL);
+	close(listenfd);
+	DEBUG("datafd: %d\n", datafd);
 }
