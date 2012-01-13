@@ -4,6 +4,7 @@
 #include "ftp_config.h"
 #include "ftp_client_datafile.h"
 #include "request.h"
+#include "ftp_dir.h"
 #include "messages.h"
 #include <strings.h>
 #include <string.h>
@@ -32,19 +33,26 @@ public:
 private:
 #define DECLEARE_COMMAND_PROCESS_FUNCTION(COMMAND) int command_##COMMAND(ftp_client *client, const char *param)
 #define DCPF(C) DECLEARE_COMMAND_PROCESS_FUNCTION(C)
+#define DECLEARE_COMMAND_ABORT_FUNCTION(FUNCTION) int FUNCTION(ftp_client *client)
+#define DCAF(F)	DECLEARE_COMMAND_ABORT_FUNCTION(F)
 	int process_request(ftp_client *client, request *r);
-	int do_welcome(ftp_client *client);
-	int not_loggedin(ftp_client *client);
-	int client_not_ready(ftp_client *client);
-	int no_data_connection(ftp_client *client);
-	int command_not_support(ftp_client *client);
-	int ensure_data_connection(ftp_client *client);
+
+	DCAF(do_welcome);
+	DCAF(not_loggedin);
+	DCAF(client_not_ready);
+	DCAF(no_data_connection);
+	DCAF(command_not_support);
+	DCAF(ensure_data_connection);
+
 	DCPF(user);
 	DCPF(pass);
+	DCPF(acct);
 	DCPF(port);
 	DCPF(pasv);
 	DCPF(quit);
 	DCPF(pwd );
+	DCPF(cwd);
+	DCPF(cdup);
 	DCPF(type);
 	DCPF(mode);
 	DCPF(stru);
@@ -52,6 +60,8 @@ private:
 	DCPF(stor);
 	DCPF(noop);
 	DCPF(list);
+	DCPF(syst);
+	DCPF(feat);
 
 	serve_state get_state();
 	void reset_data_connection();
@@ -59,7 +69,7 @@ private:
 	serve_state state;
 	trans_type type;
 	std::string username;
-	std::string workpath;
+	ftp_dir	working_dir;
 	ftp_client_datafile dfile;
 };
 
@@ -105,7 +115,7 @@ int ftp_server_internal::serve_it(ftp_client *client)
 
 int ftp_server_internal::do_welcome(ftp_client *client)
 {
-	client->response(220, "Welcome");
+	client->response(220, "Welcome.");
 	client->do_response();
 	return 0;
 }
@@ -115,7 +125,35 @@ serve_state ftp_server_internal::get_state()
 	return state;
 }
 
-int ftp_server_internal::command_user(ftp_client *client, const char *param)
+int ftp_server_internal::client_not_ready(ftp_client *client)
+{
+	return command_not_support(client);
+}
+
+int ftp_server_internal::not_loggedin(ftp_client *client)
+{
+	client->response(530, REPLY_NOT_LOGGED_IN);
+	client->do_response();
+	return 0;
+}
+
+int ftp_server_internal::no_data_connection(ftp_client *client)
+{
+	client->response(425, REPLY_NO_DATA_CONNECTION);
+	client->do_response();
+	return 0;
+}
+
+int ftp_server_internal::command_not_support(ftp_client *client)
+{
+	client->response(502, REPLY_NOT_IMPLEMENTED);
+	client->do_response();
+	return 0;
+}
+#define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
+		ftp_client *client, const char *param)
+#define ICPF(C) IMPLEMENT_COMMAND_PROCESS_FUNCTION(C)
+ICPF(user)
 {
 	DEBUG("command user\n");
 	const serve_state state = get_state();
@@ -140,52 +178,28 @@ int ftp_server_internal::command_user(ftp_client *client, const char *param)
 	return 0;
 }
 
-int ftp_server_internal::command_pass(ftp_client *client, const char *param)
+ICPF(pass)
 {
 	DEBUG("command pass\n");
+	DEBUG("Temporary Implementation: pass\n");
 	state = loggedin;
 	client->response(230 ,REPLY_LOGGED_IN);
 	client->do_response();
 //	client->set_status(logged_in);
+	const char *home = "/";
+	working_dir.cd(home);
 	return 0;
 }
 
-int ftp_server_internal::command_not_support(ftp_client *client)
-{
-	client->response(502, REPLY_NOT_IMPLEMENTED);
-	client->do_response();
-	return 0;
-}
 
-int ftp_server_internal::client_not_ready(ftp_client *client)
-{
-	client->response(502, REPLY_NOT_IMPLEMENTED);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::not_loggedin(ftp_client *client)
-{
-	client->response(530, REPLY_NOT_LOGGED_IN);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::no_data_connection(ftp_client *client)
-{
-	client->response(425, REPLY_NO_DATA_CONNECTION);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::command_quit(ftp_client *client, const char *param)
+ICPF(quit)
 {
 	client->response(221, REPLY_BYE);
 	client->do_response();
 	return ERROR_CLIENT_QUIT;
 }
 
-int ftp_server_internal::command_pasv(ftp_client *client, const char *param)
+ICPF(pasv)
 {
 	const serve_state state = get_state();
 //	if(state == ready){
@@ -211,12 +225,13 @@ int ftp_server_internal::command_pasv(ftp_client *client, const char *param)
 	return 0;
 }
 
-int ftp_server_internal::command_list(ftp_client *client, const char *param)
+ICPF(list)
 {
 	int ret_val = ensure_data_connection(client);
 	if(ret_val != 0){
 		return no_data_connection(client);
-	}
+	}		
+	DEBUG("Temporary Implementation: list\n");
 	ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
 	switch(ret_val){
 		case 0:
@@ -236,30 +251,31 @@ int ftp_server_internal::command_list(ftp_client *client, const char *param)
 			break;
 	}
 	client->do_response();
+	state = loggedin;
 	return 0;
 }
 
 		
-int ftp_server_internal::command_port(ftp_client *client, const char *param)
+ICPF(port)
 {
-	client->response(502, REPLY_NOT_IMPLEMENTED);
+	return command_not_support(client);
+}
+
+ICPF(pwd)
+{
+	DEBUG("Temporary Implementation: pwd\n");
+	client->response_format(257, "\"%s\"", working_dir.pwd() );
 	client->do_response();
 	return 0;
 }
 
-int ftp_server_internal::command_pwd(ftp_client *client, const char *param)
-{
-	client->response_format(257, "\"%s\"", "/");
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::command_type(ftp_client *client, const char *param)
+ICPF(type)
 {
 	if(param == NULL || param[0] == '\0' || param[1] != '\0'){
 		client->response(504, REPLY_NOT_IMPL_FOR_PARAM);
 	}
 	else{
+		DEBUG("Temporary Implementation: type\n");
 		switch(toupper(*param)){
 			case 'A':
 				this->type = type_A;
@@ -278,37 +294,99 @@ int ftp_server_internal::command_type(ftp_client *client, const char *param)
 	return 0;
 }
 
-int ftp_server_internal::command_mode(ftp_client *client, const char *param)
+ICPF(mode)
 {
-	client->response(502, REPLY_NOT_IMPLEMENTED);
+	return command_not_support(client);
+}
+
+ICPF(stru)
+{
+	return command_not_support(client);
+}
+
+ICPF(retr)
+{
+	int ret_val = ensure_data_connection(client);
+	if(ret_val != 0){
+		return no_data_connection(client);
+	}		
+	DEBUG("Temporary Implementation: retr\n");
+	if(*param == '/'){
+		ret_val = dfile.write_file(param);
+	}
+	else{
+		std::string fullfilename = working_dir.pwd() ;
+		fullfilename.append("/");
+		fullfilename.append(param);
+		ret_val = dfile.write_file(fullfilename.c_str() );
+	}
+	switch(ret_val){
+		case 0:
+			client->response(226, REPLY_CLOSING_DATACNN);
+			break;
+		case NO_DATA_CONNECTION:
+			client->response(425, REPLY_CANNOT_OPEN_DATACNN);
+			break;
+		case OPEN_FILE_ERROR:
+			client->response(452, REPLY_CANNOT_OPEN_FILE);
+			break;
+		case CLIENT_CLOSE_DATA_CONNECTION:
+			client->response(426, REPLY_DATACNN_ABORT);
+			break;
+		default:
+			client->response(426, REPLY_DATACNN_ABORT);
+			break;
+	}
+	client->do_response();
+	state = loggedin;
+	return 0;
+}
+
+ICPF(stor)
+{
+	return command_not_support(client);
+}
+
+ICPF(syst)
+{
+	return command_not_support(client);
+}
+
+ICPF(feat)
+{
+	return command_not_support(client);
+}
+
+ICPF(acct)
+{
+	return command_not_support(client);
+}
+
+ICPF(noop)
+{
+	return command_not_support(client);
+}
+
+ICPF(cwd)
+{
+	if(working_dir.cd(param) != 0){
+		client->response_format(550, "Can't change working directory to %s", working_dir.pwd() );
+	}
+	else{
+		client->response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
+	}
 	client->do_response();
 	return 0;
 }
 
-int ftp_server_internal::command_stru(ftp_client *client, const char *param)
+ICPF(cdup)
 {
-	client->response(502, REPLY_NOT_IMPLEMENTED);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::command_retr(ftp_client *client, const char *param)
-{
-	client->response(502, REPLY_NOT_IMPLEMENTED);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::command_stor(ftp_client *client, const char *param)
-{
-	client->response(502, REPLY_NOT_IMPLEMENTED);
-	client->do_response();
-	return 0;
-}
-
-int ftp_server_internal::command_noop(ftp_client *client, const char *param)
-{
-	client->response(502, REPLY_NOT_IMPLEMENTED);
+	if(working_dir.cdup() != 0){
+		client->response_format(550, "Can't change working directory to %s", working_dir.pwd() );
+	}
+	else{
+		client->response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
+	}
 	client->do_response();
 	return 0;
 }
@@ -346,16 +424,21 @@ int ftp_server_internal::process_request(ftp_client *client, request *r)
 	STATE_THROUGH(ready, client_not_ready)
 	PROCESS_MAP("USER", command_user)
 	PROCESS_MAP("PASS", command_pass)
+	PROCESS_MAP("ACCT", command_acct)
 	PROCESS_MAP("QUIT", command_quit)
 	PROCESS_MAP("TYPE", command_type)
 	PROCESS_MAP("MODE", command_mode)
 	PROCESS_MAP("STRU", command_stru)
-	STATE_THROUGH(ready, not_loggedin)
+	STATE_THROUGH(loggedin, not_loggedin)
 	PROCESS_MAP("PASV", command_pasv)
 	PROCESS_MAP("PORT", command_port)
 	PROCESS_MAP("PWD", 	command_pwd)
+	PROCESS_MAP("CWD", 	command_cwd)
+	PROCESS_MAP("CDUP",	command_cdup)
 	PROCESS_MAP("NOOP", command_noop)
-	STATE_THROUGH(loggedin, no_data_connection)
+	PROCESS_MAP("SYST", command_syst)
+	PROCESS_MAP("FEAT", command_feat)
+	STATE_THROUGH(datacnn_wait, no_data_connection)
 	PROCESS_MAP("RETR", command_retr)
 	PROCESS_MAP("STOR", command_stor)
 	PROCESS_MAP("LIST", command_list)
@@ -381,3 +464,4 @@ int ftp_server_internal::ensure_data_connection(ftp_client *client)
 	client->do_response();
 	return 0;
 }
+

@@ -9,7 +9,7 @@
 
 static inline bool legal_command_length(int length)
 {
-	DEBUG("Command length:%d\n", length);
+	//DEBUG("Command length:%d\n", length);
 	if(length == 3 || length == 4){
 		return true;
 	}
@@ -68,7 +68,6 @@ int request::parse_from_line(const char *line)
 		command[i] = toupper(line[i] );
 	}
 	command[command_length] = '\0';
-	DEBUG("Command is:%s\n", command);
 		
 
 	// copy param

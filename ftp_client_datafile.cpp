@@ -16,7 +16,12 @@ ftp_client_datafile::ftp_client_datafile()
 
 void ftp_client_datafile::reset()
 {
-	DEBUG("ftp_client_datafile::reset() not implement\n");
+	if(listenfd != -1){
+		::close(listenfd);
+	}
+	if(datafd != -1){
+		::close(datafd);
+	}
 }
 
 unsigned short ftp_client_datafile::random_bind()

@@ -59,7 +59,8 @@ int ftpd_internal::init(ftp_config *conf)
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port = htons(conf->listen_port);
 
-	int ret_val = bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr) );
+	bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr) );
+//	int ret_val = bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr) );
 //	if(ret_val == -1){
 //		die("bind error :%d\n", errno);
 //	}
@@ -74,7 +75,8 @@ int ftpd_internal::run()
 	int client_ctrlfd;
 	for( ; ; ){
 		client_ctrlfd = accept(listenfd, (struct sockaddr *)NULL, NULL);
-		serve_it_standalone(client_ctrlfd);
+		//serve_it_standalone(client_ctrlfd);
+		serve_it(client_ctrlfd);
 	}
 	return 0;
 }
