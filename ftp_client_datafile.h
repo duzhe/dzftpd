@@ -4,6 +4,7 @@
 
 enum data_mode
 {
+	NOSP,
 	PASV,
 	PORT,
 };
@@ -18,6 +19,7 @@ public:
 	void reset();
 	void accept_connection();
 	int write_file(const char *filename);
+	ssize_t write(const void *buf, size_t count);
 private:
 	int listenfd;
 	int datafd;

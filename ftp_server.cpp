@@ -8,6 +8,7 @@
 #include "messages.h"
 #include <strings.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <string>
 
 enum serve_state 
@@ -35,6 +36,8 @@ private:
 #define DCPF(C) DECLEARE_COMMAND_PROCESS_FUNCTION(C)
 #define DECLEARE_COMMAND_ABORT_FUNCTION(FUNCTION) int FUNCTION(ftp_client *client)
 #define DCAF(F)	DECLEARE_COMMAND_ABORT_FUNCTION(F)
+#define DECLEARE_COMMAND_ENSURE_FUNCTION(ENSURE_FUNCTION) int ENSURE_FUNCTION(ftp_client *client)
+#define DCEF(F)	DECLEARE_COMMAND_ENSURE_FUNCTION(F)
 	int process_request(ftp_client *client, request *r);
 
 	DCAF(do_welcome);
@@ -42,7 +45,10 @@ private:
 	DCAF(client_not_ready);
 	DCAF(no_data_connection);
 	DCAF(command_not_support);
-	DCAF(ensure_data_connection);
+//	DCAF(ensure_data_connection);
+
+	DCEF(ensure_loggedin);
+	DCEF(ensure_data_connection);
 
 	DCPF(user);
 	DCPF(pass);
@@ -113,6 +119,14 @@ int ftp_server_internal::serve_it(ftp_client *client)
 	return 0;
 }
 
+void ftp_server_internal::reset_data_connection()
+{
+	if(state == datacnn_wait || state == datacnn_ready){
+		dfile.reset();
+		state = loggedin;
+	}
+}
+
 int ftp_server_internal::do_welcome(ftp_client *client)
 {
 	client->response(220, "Welcome.");
@@ -150,6 +164,28 @@ int ftp_server_internal::command_not_support(ftp_client *client)
 	client->do_response();
 	return 0;
 }
+
+#define IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) int ftp_server_internal::F(ftp_client *client)
+#define ICEF(F) IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) 
+ICEF(ensure_data_connection)
+{
+	if(state == datacnn_wait){
+		dfile.accept_connection();	
+	}
+	client->response(150, REPLY_DATACNN_CONNECTED);
+	client->do_response();
+	return 0;
+}
+
+ICEF(ensure_loggedin)
+{
+	if(state == ready){
+		(void)not_loggedin(client);
+		return -1;
+	}
+	return 0;
+}
+
 #define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
 		ftp_client *client, const char *param)
 #define ICPF(C) IMPLEMENT_COMMAND_PROCESS_FUNCTION(C)
@@ -202,13 +238,6 @@ ICPF(quit)
 ICPF(pasv)
 {
 	const serve_state state = get_state();
-//	if(state == ready){
-//		client->response(530, REPLY_NOT_LOGGED_IN);
-//	}
-//	else if(state == loggedin){
-//		ftp_client_datafile *dfile = new ftp_client_datafile;
-//		dfile->mode = PASV;
-//		unsigned short port = dfile->random_bind();
 	if(state == datacnn_wait || datacnn_ready){
 		reset_data_connection();
 	}
@@ -232,6 +261,18 @@ ICPF(list)
 		return no_data_connection(client);
 	}		
 	DEBUG("Temporary Implementation: list\n");
+
+//	struct stat stat_buf;
+//	ret_val = stat(param, &stat_buf);
+//	if(ret_val == 0){
+//		if(!S_ISREG(stat_buf.st_mode) && S_ISDIR(stat_buf.st_mode) ){
+//			continue;
+//		}
+//
+//	}
+//	else{
+//		client->response(226, REPLY_CLOSING_DATACNN);
+//	}
 	ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
 	switch(ret_val){
 		case 0:
@@ -392,21 +433,26 @@ ICPF(cdup)
 }
 
 #define PROCESS_MAP_BEGIN()	\
-do{ \
-	if(0){}
+do{ 
 
 #define PROCESS_MAP(COMMAND, PROCESS_FUNCTION) \
-	else if(strcmp(command, COMMAND) == 0 ) { \
+	if(strcmp(command, COMMAND) == 0 ) { \
 		ret_val = PROCESS_FUNCTION(client, r->params); \
 		break; \
 	}
 
 #define STATE_THROUGH(STATE, NOT_ALLOW_FUNCTION) \
-	else if(state < STATE) {\
+	if(state < STATE) {\
 		DEBUG("State Not through:%s %s\n", command, r->params == NULL?"":r->params);	\
 		ret_val = NOT_ALLOW_FUNCTION(client);\
 		break; \
 	}	\
+
+#define PROCESS_ENSURE(ENSURE_FUNCTION) \
+	ret_val = ENSURE_FUNCTION(client); \
+	if(ret_val < 0){ \
+		break; \
+	}\
 
 #define PROCESS_MAP_END(NOT_SUPPORT_FUNCTION) \
 	else{ \
@@ -421,7 +467,7 @@ int ftp_server_internal::process_request(ftp_client *client, request *r)
 	const char *command = r->command;
 
 	PROCESS_MAP_BEGIN()
-	STATE_THROUGH(ready, client_not_ready)
+//	STATE_THROUGH(ready, client_not_ready)
 	PROCESS_MAP("USER", command_user)
 	PROCESS_MAP("PASS", command_pass)
 	PROCESS_MAP("ACCT", command_acct)
@@ -429,7 +475,8 @@ int ftp_server_internal::process_request(ftp_client *client, request *r)
 	PROCESS_MAP("TYPE", command_type)
 	PROCESS_MAP("MODE", command_mode)
 	PROCESS_MAP("STRU", command_stru)
-	STATE_THROUGH(loggedin, not_loggedin)
+//	STATE_THROUGH(loggedin, not_loggedin)
+	PROCESS_ENSURE(ensure_loggedin)
 	PROCESS_MAP("PASV", command_pasv)
 	PROCESS_MAP("PORT", command_port)
 	PROCESS_MAP("PWD", 	command_pwd)
@@ -438,30 +485,13 @@ int ftp_server_internal::process_request(ftp_client *client, request *r)
 	PROCESS_MAP("NOOP", command_noop)
 	PROCESS_MAP("SYST", command_syst)
 	PROCESS_MAP("FEAT", command_feat)
-	STATE_THROUGH(datacnn_wait, no_data_connection)
+//	STATE_THROUGH(datacnn_wait, no_data_connection)
+	PROCESS_ENSURE(ensure_data_connection)
 	PROCESS_MAP("RETR", command_retr)
 	PROCESS_MAP("STOR", command_stor)
 	PROCESS_MAP("LIST", command_list)
 	PROCESS_MAP_END(command_not_support)
 
 	return ret_val;
-}
-
-void ftp_server_internal::reset_data_connection()
-{
-	if(state == datacnn_wait || state == datacnn_ready){
-		dfile.reset();
-		state = loggedin;
-	}
-}
-
-int ftp_server_internal::ensure_data_connection(ftp_client *client)
-{
-	if(state == datacnn_wait){
-		dfile.accept_connection();	
-	}
-	client->response(150, REPLY_DATACNN_CONNECTED);
-	client->do_response();
-	return 0;
 }
 

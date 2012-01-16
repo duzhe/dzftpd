@@ -12,6 +12,8 @@ public:
 	int readline(char *linebuf);
 	int flush();
 private:
+	void set_nodelay();
+private:
 	int fd;
 
 	size_t write_buf_left;

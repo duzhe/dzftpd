@@ -10,6 +10,7 @@
 
 ftp_client_datafile::ftp_client_datafile()
 {
+	mode = NOSP;
 	listenfd = -1;
 	datafd = -1;
 }
@@ -22,6 +23,7 @@ void ftp_client_datafile::reset()
 	if(datafd != -1){
 		::close(datafd);
 	}
+	mode = NOSP;
 }
 
 unsigned short ftp_client_datafile::random_bind()
@@ -86,7 +88,7 @@ int ftp_client_datafile::write_file(const char *filename)
 			return 0;
 		}
 		
-		ret_val = write(datafd, buf, ret_val);
+		ret_val = ::write(datafd, buf, ret_val);
 		if(ret_val == -1){
 			close(file);
 			close(datafd);
@@ -102,3 +104,9 @@ void ftp_client_datafile::accept_connection()
 	close(listenfd);
 	DEBUG("datafd: %d\n", datafd);
 }
+
+ssize_t ftp_client_datafile::write(const void *buf, size_t count)
+{
+	return ::write(datafd, buf, count);
+}
+

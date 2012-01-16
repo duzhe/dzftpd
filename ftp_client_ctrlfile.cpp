@@ -1,6 +1,10 @@
 #include "global.h"
 #include "ftp_client_ctrlfile.h"
 #include <unistd.h>  //for write and read
+#include <sys/socket.h> /* for setsockopt */
+#include <sys/types.h>  /* for setsockopt */
+#include <netinet/in.h> 
+#include <netinet/tcp.h> 
 #include <string.h> /* for memmove */
 #include <stdio.h>
 #include <stdarg.h> /* for va_list */
@@ -14,12 +18,24 @@ ftp_client_ctrlfile::ftp_client_ctrlfile(int client_ctrlfd)
 
 	read_buf_left = sizeof(read_buf);
 	read_buf_pos = read_buf;
+
+	set_nodelay();
 }
 
 ftp_client_ctrlfile::~ftp_client_ctrlfile()
 {
 	close();
 }
+
+void ftp_client_ctrlfile::set_nodelay()
+{
+	int flag = 1;
+	int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag) );
+	if( ret == -1){
+		DEBUG("set_nodelay: setsockopt error\n");
+	}
+}
+
 
 int ftp_client_ctrlfile::close()
 {
