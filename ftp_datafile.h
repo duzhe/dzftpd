@@ -1,5 +1,5 @@
-#ifndef DZFTP_FTP_CLIENT_DATAFILE_H_INCLUDE
-#define DZFTP_FTP_CLIENT_DATAFILE_H_INCLUDE
+#ifndef DZFTP_FTP_DATAFILE_H_INCLUDE
+#define DZFTP_FTP_DATAFILE_H_INCLUDE
 
 
 enum data_mode
@@ -9,12 +9,12 @@ enum data_mode
 	PORT,
 };
 
-class ftp_client_datafile
+class ftp_datafile
 {
 public:
 	data_mode mode;
 public:
-	ftp_client_datafile();
+	ftp_datafile();
 	unsigned short random_bind();
 	void reset();
 	void accept_connection();

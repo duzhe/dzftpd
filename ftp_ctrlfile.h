@@ -1,11 +1,11 @@
-#ifndef DZFTP_FTP_CLIENT_CTRLFILE_H_INCLUDE
-#define DZFTP_FTP_CLIENT_CTRLFILE_H_INCLUDE
+#ifndef DZFTP_FTP_CTRLFILE_H_INCLUDE
+#define DZFTP_FTP_CTRLFILE_H_INCLUDE
 
-class ftp_client_ctrlfile
+class ftp_ctrlfile
 {
 public:
-	ftp_client_ctrlfile(int ctrlfd);
-	~ftp_client_ctrlfile();
+	ftp_ctrlfile(int ctrlfd);
+	~ftp_ctrlfile();
 	int close();
 	int puts(const char *message);
 	int printf(const char *format, ...);

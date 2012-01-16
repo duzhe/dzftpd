@@ -1,5 +1,5 @@
 #include "global.h"
-#include "ftp_client_ctrlfile.h"
+#include "ftp_ctrlfile.h"
 #include <unistd.h>  //for write and read
 #include <sys/socket.h> /* for setsockopt */
 #include <sys/types.h>  /* for setsockopt */
@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdarg.h> /* for va_list */
 
-ftp_client_ctrlfile::ftp_client_ctrlfile(int client_ctrlfd)
+ftp_ctrlfile::ftp_ctrlfile(int client_ctrlfd)
 {
 	fd = client_ctrlfd;
 
@@ -22,12 +22,12 @@ ftp_client_ctrlfile::ftp_client_ctrlfile(int client_ctrlfd)
 	set_nodelay();
 }
 
-ftp_client_ctrlfile::~ftp_client_ctrlfile()
+ftp_ctrlfile::~ftp_ctrlfile()
 {
 	close();
 }
 
-void ftp_client_ctrlfile::set_nodelay()
+void ftp_ctrlfile::set_nodelay()
 {
 	int flag = 1;
 	int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag) );
@@ -37,7 +37,7 @@ void ftp_client_ctrlfile::set_nodelay()
 }
 
 
-int ftp_client_ctrlfile::close()
+int ftp_ctrlfile::close()
 {
 	if(fd != -1){
 		::close(fd);
@@ -46,12 +46,12 @@ int ftp_client_ctrlfile::close()
 	return 0;
 }
 
-int ftp_client_ctrlfile::puts(const char *message)
+int ftp_ctrlfile::puts(const char *message)
 {
 	return 0;
 }
 
-int ftp_client_ctrlfile::printf(const char *format, ...)
+int ftp_ctrlfile::printf(const char *format, ...)
 {
 	char buf[MAX_RESPONSE_LENGTH];
 
@@ -76,7 +76,7 @@ int ftp_client_ctrlfile::printf(const char *format, ...)
 	return 0;
 }
 
-int ftp_client_ctrlfile::flush()
+int ftp_ctrlfile::flush()
 {
 	DEBUG("client flush\n");
 	int return_code = ::write(fd, write_buf, write_buf_pos - write_buf);
@@ -88,7 +88,7 @@ int ftp_client_ctrlfile::flush()
 	return 0;
 }
 
-int ftp_client_ctrlfile::readline(char *linebuf)
+int ftp_ctrlfile::readline(char *linebuf)
 {
 	char *line_end = read_buf;
 	while(true){
@@ -128,7 +128,7 @@ int ftp_client_ctrlfile::readline(char *linebuf)
 	return 0;// will never run to here;
 }
 
-int ftp_client_ctrlfile::read()
+int ftp_ctrlfile::read()
 {
 	int read_count = ::read(fd, read_buf_pos, read_buf_left);
 	if(read_count == -1){

@@ -1,5 +1,5 @@
 #include "global.h"
-#include "ftp_client_datafile.h"
+#include "ftp_datafile.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -8,14 +8,14 @@
 #include <arpa/inet.h>
 #include <strings.h> /* for bzero */
 
-ftp_client_datafile::ftp_client_datafile()
+ftp_datafile::ftp_datafile()
 {
 	mode = NOSP;
 	listenfd = -1;
 	datafd = -1;
 }
 
-void ftp_client_datafile::reset()
+void ftp_datafile::reset()
 {
 	if(listenfd != -1){
 		::close(listenfd);
@@ -26,7 +26,7 @@ void ftp_client_datafile::reset()
 	mode = NOSP;
 }
 
-unsigned short ftp_client_datafile::random_bind()
+unsigned short ftp_datafile::random_bind()
 {
 	if(mode != PASV){
 		return 0;
@@ -63,7 +63,7 @@ unsigned short ftp_client_datafile::random_bind()
 	return (servaddr.sin_port);
 }
 
-int ftp_client_datafile::write_file(const char *filename)
+int ftp_datafile::write_file(const char *filename)
 {
 	if(datafd == -1){
 		return NO_DATA_CONNECTION;
@@ -98,14 +98,14 @@ int ftp_client_datafile::write_file(const char *filename)
 	}
 }
 
-void ftp_client_datafile::accept_connection()
+void ftp_datafile::accept_connection()
 {
 	datafd = ::accept(listenfd, NULL, NULL);
 	close(listenfd);
 	DEBUG("datafd: %d\n", datafd);
 }
 
-ssize_t ftp_client_datafile::write(const void *buf, size_t count)
+ssize_t ftp_datafile::write(const void *buf, size_t count)
 {
 	return ::write(datafd, buf, count);
 }

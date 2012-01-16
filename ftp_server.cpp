@@ -1,9 +1,9 @@
 #include "global.h"
 #include "ftp_server.h"
 //#include "ftp_client.h"
-#include "ftp_client_ctrlfile.h"
+#include "ftp_ctrlfile.h"
 #include "ftp_config.h"
-#include "ftp_client_datafile.h"
+#include "ftp_datafile.h"
 #include "request.h"
 #include "ftp_dir.h"
 #include "messages.h"
@@ -93,8 +93,8 @@ private:
 	ftp_dir	working_dir;
 
 
-	ftp_client_datafile dfile;
-	ftp_client_ctrlfile *ctrlfile;
+	ftp_datafile dfile;
+	ftp_ctrlfile *ctrlfile;
 	std::vector<const char *> response_list;
 	typedef std::vector<const char *>::iterator Iter;
 	response_code_t response_code;
@@ -141,7 +141,7 @@ int ftp_server::do_response()
 
 int ftp_server_internal::serve_it(int ctrlfd)
 {
-	ctrlfile = new ftp_client_ctrlfile(ctrlfd);
+	ctrlfile = new ftp_ctrlfile(ctrlfd);
 	return serve();
 }
 
