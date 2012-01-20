@@ -19,6 +19,12 @@
 
 #define ERROR_CLIENT_CLOSED -2
 
+// command process function return values:
+#define CP_DONE 		0
+#define CP_CONTINUE			1
+#define CP_CLIENT_QUIT -1
+
+
 enum serve_state 
 {
 	ready,
@@ -32,7 +38,6 @@ enum trans_type
 	type_A,
 	type_I,
 };
-#define ERROR_CLIENT_QUIT -1
 
 class ftp_server_internal
 {
@@ -158,7 +163,7 @@ int ftp_server_internal::serve()
 		}
 		int ret_val =  process_request(&r);
 		if(ret_val != 0){
-			if( ret_val == ERROR_CLIENT_QUIT){
+			if( ret_val == CP_CLIENT_QUIT){
 				break;
 			}
 		}
@@ -254,42 +259,47 @@ int ftp_server_internal::not_loggedin()
 {
 	response(530, REPLY_NOT_LOGGED_IN);
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 int ftp_server_internal::no_data_connection()
 {
 	response(425, REPLY_NO_DATA_CONNECTION);
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 int ftp_server_internal::command_not_support()
 {
 	response(502, REPLY_NOT_IMPLEMENTED);
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 #define IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) int ftp_server_internal::F()
 #define ICEF(F) IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) 
 ICEF(ensure_data_connection)
 {
+	if(state < datacnn_wait){
+		return no_data_connection();
+	}
 	if(state == datacnn_wait){
 		dfile.accept_connection();	
+		response(150, REPLY_DATACNN_CONNECTED);
 	}
-	response(150, REPLY_DATACNN_CONNECTED);
+	else if(state == datacnn_ready){
+		response(125, REPLY_DATACNN_ALREADY_OPEN);
+	}
 	do_response();
-	return 0;
+	return CP_CONTINUE;
 }
 
 ICEF(ensure_loggedin)
 {
 	if(state == ready){
-		(void)not_loggedin();
-		return -1;
+		return not_loggedin();
 	}
-	return 0;
+	return CP_CONTINUE;
 }
 
 #define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
@@ -317,7 +327,7 @@ ICPF(user)
 		response(331, REPLY_NEED_PSWD);
 	}
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(pass)
@@ -330,7 +340,7 @@ ICPF(pass)
 //	set_status(logged_in);
 	const char *home = "/";
 	working_dir.cd(home);
-	return 0;
+	return CP_DONE;
 }
 
 
@@ -338,7 +348,7 @@ ICPF(quit)
 {
 	response(221, REPLY_BYE);
 	do_response();
-	return ERROR_CLIENT_QUIT;
+	return CP_CLIENT_QUIT;
 }
 
 ICPF(pasv)
@@ -352,20 +362,20 @@ ICPF(pasv)
 		unsigned short port = dfile.random_bind();
 		DEBUG("Random port:%d\n", (int)port);
 		this->state = datacnn_wait;
-		response_format(227, REPLY_ENTRY_PASV_MODE":(%s,%d,%d)",
+		response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
 				get_serve_addr(), (int)((unsigned char *)(&port))[0],
 				(int)((unsigned char*)(&port))[1] );
 	}
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(list)
 {
-	int ret_val = ensure_data_connection();
-	if(ret_val != 0){
-		return no_data_connection();
-	}		
+//	int ret_val = ensure_data_connection();
+//	if(ret_val != 0){
+//		return no_data_connection();
+//	}		
 	DEBUG("Temporary Implementation: list\n");
 
 //	struct stat stat_buf;
@@ -379,7 +389,7 @@ ICPF(list)
 //	else{
 //		response(226, REPLY_CLOSING_DATACNN);
 //	}
-	ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
+	int ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
 	switch(ret_val){
 		case 0:
 			response(226, REPLY_CLOSING_DATACNN);
@@ -399,7 +409,7 @@ ICPF(list)
 	}
 	do_response();
 	state = loggedin;
-	return 0;
+	return CP_DONE;
 }
 
 		
@@ -413,7 +423,7 @@ ICPF(pwd)
 	DEBUG("Temporary Implementation: pwd\n");
 	response_format(257, "\"%s\"", working_dir.pwd() );
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(type)
@@ -438,7 +448,7 @@ ICPF(type)
 		}
 	}
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(mode)
@@ -486,7 +496,7 @@ ICPF(retr)
 	}
 	do_response();
 	state = loggedin;
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(stor)
@@ -523,7 +533,7 @@ ICPF(cwd)
 		response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
 	}
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 ICPF(cdup)
@@ -535,7 +545,7 @@ ICPF(cdup)
 		response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
 	}
 	do_response();
-	return 0;
+	return CP_DONE;
 }
 
 #define PROCESS_MAP_BEGIN()	\
@@ -556,7 +566,7 @@ do{
 
 #define PROCESS_ENSURE(ENSURE_FUNCTION) \
 	ret_val = ENSURE_FUNCTION(); \
-	if(ret_val < 0){ \
+	if(ret_val != CP_CONTINUE){ \
 		break; \
 	}\
 

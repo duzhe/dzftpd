@@ -102,7 +102,7 @@ void ftp_datafile::accept_connection()
 {
 	datafd = ::accept(listenfd, NULL, NULL);
 	close(listenfd);
-	DEBUG("datafd: %d\n", datafd);
+	DEBUG("data connected:datafd: %d\n", datafd);
 }
 
 ssize_t ftp_datafile::write(const void *buf, size_t count)
