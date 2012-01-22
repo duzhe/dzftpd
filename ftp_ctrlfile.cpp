@@ -78,7 +78,7 @@ int ftp_ctrlfile::printf(const char *format, ...)
 
 int ftp_ctrlfile::flush()
 {
-	DEBUG("client flush\n");
+//	DEBUG("client flush\n");
 	int return_code = ::write(fd, write_buf, write_buf_pos - write_buf);
 	if(return_code == -1){
 		return  -1;

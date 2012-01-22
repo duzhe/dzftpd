@@ -9,8 +9,11 @@ class ftp_dir
 public:
 	std::string dir;
 public:
+	ftp_dir(){};
+	ftp_dir(const char *homepath);
 	int cdup();
 	int cd(const char *pathname);
 	const char *pwd()const;
+	std::string getfullpathname(const char *param)const;
 };
 #endif

@@ -18,3 +18,4 @@
 #define REPLY_CANNOT_OPEN_DATACNN	"Can't open data connection."
 #define REPLY_CANNOT_OPEN_FILE		"Can't open specified file."
 #define REPLY_DATACNN_ALREADY_OPEN  "Data connection already open; transfer starting."
+#define REPLY_TRANS_ABOUT			"Connection closed; transfer aborted."

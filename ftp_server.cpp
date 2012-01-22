@@ -9,12 +9,13 @@
 #include "messages.h"
 #include <strings.h>
 #include <sys/stat.h>
-#include <string>
-#include <vector>
+#include <dirent.h>
 #include <assert.h> 
 #include <stdarg.h>  /* for va_list */
 #include <string.h>  /* for strlen */
 #include <stdlib.h>  /* for malloc and free */
+#include <string>
+#include <vector>
 
 
 #define ERROR_CLIENT_CLOSED -2
@@ -337,7 +338,6 @@ ICPF(pass)
 	state = loggedin;
 	response(230 ,REPLY_LOGGED_IN);
 	do_response();
-//	set_status(logged_in);
 	const char *home = "/";
 	working_dir.cd(home);
 	return CP_DONE;
@@ -372,23 +372,110 @@ ICPF(pasv)
 
 ICPF(list)
 {
-//	int ret_val = ensure_data_connection();
-//	if(ret_val != 0){
-//		return no_data_connection();
-//	}		
 	DEBUG("Temporary Implementation: list\n");
 
-//	struct stat stat_buf;
-//	ret_val = stat(param, &stat_buf);
-//	if(ret_val == 0){
-//		if(!S_ISREG(stat_buf.st_mode) && S_ISDIR(stat_buf.st_mode) ){
+	const std::string &request_path = working_dir.getfullpathname(param);
+	DIR *dir = opendir(request_path.c_str() );
+	if(dir == NULL){
+		dfile.reset();
+		response(426, REPLY_TRANS_ABOUT);
+		do_response();
+		return CP_DONE;
+	}
+	ftp_dir request_dir(request_path.c_str() );
+	for(struct dirent *dire = readdir(dir);;dire = readdir(dir) ){
+		if(dire == NULL){
+			response(226, REPLY_CLOSING_DATACNN);
+			do_response();
+			dfile.reset();
+			::closedir(dir);
+			break;
+		}
+		// file name
+		if(dire->d_name[0] == '.' ){
+			continue;
+		}
+
+		struct stat statbuf;
+		std::string fullpathname = request_dir.getfullpathname(dire->d_name);
+//		std::string item_line;
+		char item_line_buf[MAX_PATH + 256];
+		if(lstat(fullpathname.c_str(), &statbuf) < 0){
+			continue;
+		}
+		
+		// file type
+		if(!S_ISDIR(statbuf.st_mode) && !S_ISREG(statbuf.st_mode) ){
+			continue;
+		}
+
+//		if(S_ISDIR(statbuf.st_mode) ) {
+//			item_line.append('d');
+//		}
+//		else if(S_ISREG(statbuf.st_mode) ){
+//			item_line.append('-');
+//		}
+//		else{
 //			continue;
 //		}
+
+		// access permission
+		int count = sprintf(item_line_buf, "%c%c%c%c%c%c%c%c%c%c %4d %5d %5d %12ld ",
+				S_ISREG(statbuf.st_mode)?'-':'d',
+				(statbuf.st_mode & S_IRUSR)?'r':'-',
+                (statbuf.st_mode & S_IWUSR)?'w':'-',
+                (statbuf.st_mode & S_IXUSR)?'x':'-',
+                (statbuf.st_mode & S_IRGRP)?'r':'-',
+                (statbuf.st_mode & S_IWGRP)?'w':'-',
+                (statbuf.st_mode & S_IXGRP)?'x':'-',
+                (statbuf.st_mode & S_IROTH)?'r':'-',
+                (statbuf.st_mode & S_IWOTH)?'w':'-',
+                (statbuf.st_mode & S_IXOTH)?'x':'-',
+				statbuf.st_nlink,
+				statbuf.st_uid,
+				statbuf.st_gid,
+				statbuf.st_size
+			   );
+		char *pos = item_line_buf + count;
+		const char *mtime = ctime(&statbuf.st_mtime);
+		memcpy(pos, mtime+4, 11);
+
+		pos += 11;
+		*pos++ = ' ';
+		for(const char *p = dire->d_name; *p != '\0'; p++){
+			*pos++ = *p;
+		}
+		*pos++ = '\r';
+		*pos++ = '\n';
+
+		dfile.write(item_line_buf, pos-item_line_buf);
+	}
+
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
+//		item_line.append( ;
 //
-//	}
-//	else{
-//		response(226, REPLY_CLOSING_DATACNN);
-//	}
+//		item_line.append(' ');
+//
+//		// link count
+//		item_line.append('2');
+//
+//		// owner id
+//		item_line.append("500");
+//
+//		// group id
+//		item_line.append("500");
+
+		
+
+
+
 	int ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
 	switch(ret_val){
 		case 0:
@@ -463,20 +550,18 @@ ICPF(stru)
 
 ICPF(retr)
 {
-	int ret_val = ensure_data_connection();
-	if(ret_val != 0){
-		return no_data_connection();
-	}		
 	DEBUG("Temporary Implementation: retr\n");
-	if(*param == '/'){
-		ret_val = dfile.write_file(param);
-	}
-	else{
-		std::string fullfilename = working_dir.pwd() ;
-		fullfilename.append("/");
-		fullfilename.append(param);
-		ret_val = dfile.write_file(fullfilename.c_str() );
-	}
+//	if(*param == '/'){
+//		ret_val = dfile.write_file(param);
+//	}
+//	else{
+//		std::string fullfilename = working_dir.pwd() ;
+//		fullfilename.append("/");
+//		fullfilename.append(param);
+//		ret_val = dfile.write_file(fullfilename.c_str() );
+//	}
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = dfile.write_file(fullpathname.c_str() );
 	switch(ret_val){
 		case 0:
 			response(226, REPLY_CLOSING_DATACNN);
@@ -557,13 +642,6 @@ do{
 		break; \
 	}
 
-#define STATE_THROUGH(STATE, NOT_ALLOW_FUNCTION) \
-	if(state < STATE) {\
-		DEBUG("State Not through:%s %s\n", command, r->params == NULL?"":r->params);	\
-		ret_val = NOT_ALLOW_FUNCTION();\
-		break; \
-	}	\
-
 #define PROCESS_ENSURE(ENSURE_FUNCTION) \
 	ret_val = ENSURE_FUNCTION(); \
 	if(ret_val != CP_CONTINUE){ \
@@ -583,7 +661,6 @@ int ftp_server_internal::process_request(request *r)
 	const char *command = r->command;
 
 	PROCESS_MAP_BEGIN()
-//	STATE_THROUGH(ready, client_not_ready)
 	PROCESS_MAP("USER", command_user)
 	PROCESS_MAP("PASS", command_pass)
 	PROCESS_MAP("ACCT", command_acct)
@@ -591,7 +668,6 @@ int ftp_server_internal::process_request(request *r)
 	PROCESS_MAP("TYPE", command_type)
 	PROCESS_MAP("MODE", command_mode)
 	PROCESS_MAP("STRU", command_stru)
-//	STATE_THROUGH(loggedin, not_loggedin)
 	PROCESS_ENSURE(ensure_loggedin)
 	PROCESS_MAP("PASV", command_pasv)
 	PROCESS_MAP("PORT", command_port)
@@ -601,7 +677,6 @@ int ftp_server_internal::process_request(request *r)
 	PROCESS_MAP("NOOP", command_noop)
 	PROCESS_MAP("SYST", command_syst)
 	PROCESS_MAP("FEAT", command_feat)
-//	STATE_THROUGH(datacnn_wait, no_data_connection)
 	PROCESS_ENSURE(ensure_data_connection)
 	PROCESS_MAP("RETR", command_retr)
 	PROCESS_MAP("STOR", command_stor)

@@ -6,6 +6,12 @@ static int ensure_dir(const char *pathname)
 	DEBUG("Temporary Implementation: ensure_dir\n");
 	return 0;
 }
+
+ftp_dir::ftp_dir(const char *homepath)
+{
+	dir = homepath;
+}
+
 int ftp_dir::cdup()
 {
 	std::string current = dir;
@@ -23,25 +29,11 @@ int ftp_dir::cdup()
 
 int ftp_dir::cd(const char *pathname)
 {
-	if('/' == *pathname){
-		if(ensure_dir(pathname) != 0){
-			return -1;
-		}
-		dir = pathname;
+	const std::string &fullpathname = getfullpathname(pathname);
+	if(ensure_dir(fullpathname.c_str() ) != 0 ){
+		return -1;
 	}
-	else{
-		std::string fullpathname;
-		if(dir.length() == 1){
-			fullpathname = dir + pathname;
-		}
-		else{
-			fullpathname = dir + '/' + pathname;
-		}
-		if(ensure_dir(fullpathname.c_str() )!= 0){
-			return -1;
-		}
-		std::swap(dir, fullpathname);
-	}
+	dir = fullpathname;
 	return 0;
 }
 
@@ -50,3 +42,22 @@ const char *ftp_dir::pwd()const
 	return dir.c_str();
 }
 
+std::string ftp_dir::getfullpathname(const char *param)const
+{
+	if(param == NULL){
+		return pwd();
+	}
+	if('/' == *param){
+		return param;
+	}
+
+	std::string fullpathname;
+	if(dir.length() == 1){
+		fullpathname = dir + param;
+	}
+	else{
+		fullpathname = dir + '/' + param;
+	}
+	return fullpathname;
+}
+	

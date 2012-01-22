@@ -25,8 +25,9 @@ typedef int command_id_t;
 #define FTP_PORT 10021
 #define LISTENQ 500
 #define BUF_SIZE 512
-#define MAX_REQUEST_LENGTH 4096
-#define MAX_RESPONSE_LENGTH 4096
+#define MAX_PATH			4096
+#define MAX_REQUEST_LENGTH	MAX_PATH+16
+#define MAX_RESPONSE_LENGTH MAX_PATH+16
 
 #define BANNER "--- Welcome to use dzftp ---"
 
