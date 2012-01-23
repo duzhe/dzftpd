@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <errno.h>
 typedef int command_id_t;
 //struct request_t
 //{

@@ -107,6 +107,25 @@ void ftp_datafile::accept_connection()
 
 ssize_t ftp_datafile::write(const void *buf, size_t count)
 {
-	return ::write(datafd, buf, count);
+	//DEBUG
+	::write(STDOUT_FILENO, buf, count);
+	if(datafd == -1){
+		return NO_DATA_CONNECTION;
+	}
+	do{
+		ssize_t ret_val = ::write(datafd, buf, count);
+		if(ret_val == -1){
+			switch(errno){
+				case EINTR:
+					continue;
+				default:
+					return CLIENT_CLOSE_DATA_CONNECTION;
+			}
+		}
+		return 0;
+	}
+	while(true);
+	// never run to here;
+	return 0;
 }
 

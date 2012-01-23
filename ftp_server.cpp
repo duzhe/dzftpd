@@ -372,8 +372,6 @@ ICPF(pasv)
 
 ICPF(list)
 {
-	DEBUG("Temporary Implementation: list\n");
-
 	const std::string &request_path = working_dir.getfullpathname(param);
 	DIR *dir = opendir(request_path.c_str() );
 	if(dir == NULL){
@@ -383,14 +381,8 @@ ICPF(list)
 		return CP_DONE;
 	}
 	ftp_dir request_dir(request_path.c_str() );
-	for(struct dirent *dire = readdir(dir);;dire = readdir(dir) ){
-		if(dire == NULL){
-			response(226, REPLY_CLOSING_DATACNN);
-			do_response();
-			dfile.reset();
-			::closedir(dir);
-			break;
-		}
+	int ret_val = 0;
+	for(struct dirent *dire = readdir(dir); dire != NULL ;dire = readdir(dir) ){
 		// file name
 		if(dire->d_name[0] == '.' ){
 			continue;
@@ -398,8 +390,7 @@ ICPF(list)
 
 		struct stat statbuf;
 		std::string fullpathname = request_dir.getfullpathname(dire->d_name);
-//		std::string item_line;
-		char item_line_buf[MAX_PATH + 256];
+		char item_line[MAX_PATH + 256];
 		if(lstat(fullpathname.c_str(), &statbuf) < 0){
 			continue;
 		}
@@ -409,18 +400,8 @@ ICPF(list)
 			continue;
 		}
 
-//		if(S_ISDIR(statbuf.st_mode) ) {
-//			item_line.append('d');
-//		}
-//		else if(S_ISREG(statbuf.st_mode) ){
-//			item_line.append('-');
-//		}
-//		else{
-//			continue;
-//		}
-
 		// access permission
-		int count = sprintf(item_line_buf, "%c%c%c%c%c%c%c%c%c%c %4d %5d %5d %12ld ",
+		int count = sprintf(item_line, "%c%c%c%c%c%c%c%c%c%c %4d %5d %5d %12ld ",
 				S_ISREG(statbuf.st_mode)?'-':'d',
 				(statbuf.st_mode & S_IRUSR)?'r':'-',
                 (statbuf.st_mode & S_IWUSR)?'w':'-',
@@ -436,11 +417,11 @@ ICPF(list)
 				statbuf.st_gid,
 				statbuf.st_size
 			   );
-		char *pos = item_line_buf + count;
+		char *pos = item_line + count;
 		const char *mtime = ctime(&statbuf.st_mtime);
-		memcpy(pos, mtime+4, 11);
+		memcpy(pos, mtime+4, 12);
 
-		pos += 11;
+		pos += 12;
 		*pos++ = ' ';
 		for(const char *p = dire->d_name; *p != '\0'; p++){
 			*pos++ = *p;
@@ -448,52 +429,32 @@ ICPF(list)
 		*pos++ = '\r';
 		*pos++ = '\n';
 
-		dfile.write(item_line_buf, pos-item_line_buf);
+		ret_val = dfile.write(item_line, pos-item_line);
+		switch(ret_val){
+			case 0:
+				continue;
+			case NO_DATA_CONNECTION:
+				response(425, REPLY_CANNOT_OPEN_DATACNN);
+				break;
+			case OPEN_FILE_ERROR:
+				response(452, REPLY_CANNOT_OPEN_FILE);
+				break;
+			case CLIENT_CLOSE_DATA_CONNECTION:
+				response(426, REPLY_DATACNN_ABORT);
+				break;
+			default:
+				response(426, REPLY_DATACNN_ABORT);
+				break;
+		}
+		break;
 	}
-
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//		item_line.append( ;
-//
-//		item_line.append(' ');
-//
-//		// link count
-//		item_line.append('2');
-//
-//		// owner id
-//		item_line.append("500");
-//
-//		// group id
-//		item_line.append("500");
-
-		
-
-
-
-	int ret_val = dfile.write_file("/home/duzhe/repo/dzftp/debug/list.txt");
-	switch(ret_val){
-		case 0:
-			response(226, REPLY_CLOSING_DATACNN);
-			break;
-		case NO_DATA_CONNECTION:
-			response(425, REPLY_CANNOT_OPEN_DATACNN);
-			break;
-		case OPEN_FILE_ERROR:
-			response(452, REPLY_CANNOT_OPEN_FILE);
-			break;
-		case CLIENT_CLOSE_DATA_CONNECTION:
-			response(426, REPLY_DATACNN_ABORT);
-			break;
-		default:
-			response(426, REPLY_DATACNN_ABORT);
-			break;
+	if(ret_val == 0){
+		response(226, REPLY_CLOSING_DATACNN);
 	}
+	do_response();
+	dfile.reset();
+	::closedir(dir);
+
 	do_response();
 	state = loggedin;
 	return CP_DONE;
