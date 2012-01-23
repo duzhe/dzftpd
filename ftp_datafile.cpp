@@ -19,9 +19,11 @@ void ftp_datafile::reset()
 {
 	if(listenfd != -1){
 		::close(listenfd);
+		listenfd = -1;
 	}
 	if(datafd != -1){
 		::close(datafd);
+		listenfd = -1;
 	}
 	mode = NOSP;
 }

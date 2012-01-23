@@ -156,13 +156,20 @@ int ftp_server_internal::serve()
 	do_welcome();
 	for(;;){
 		request r;
-		if(wait_request(&r) != 0){
-			DEBUG("request error!\n");
-			response(500, REPLY_SYNTAX_ERROR);
-			do_response();
-			continue;
+		int ret_val = wait_request(&r);
+		if(ret_val < 0){
+			switch(ret_val){
+				case ERROR_CLIENT_CLOSED:
+					DEBUG("Client closed\n");
+					return 0;
+				default:
+					DEBUG("request error!\n");
+					response(500, REPLY_SYNTAX_ERROR);
+					do_response();
+					continue;
+			}
 		}
-		int ret_val =  process_request(&r);
+		ret_val =  process_request(&r);
 		if(ret_val != 0){
 			if( ret_val == CP_CLIENT_QUIT){
 				break;
@@ -353,21 +360,30 @@ ICPF(quit)
 
 ICPF(pasv)
 {
+	DEBUG("Temporary Implementation: pasv\n");
 	const serve_state state = get_state();
 	if(state == datacnn_wait || datacnn_ready){
 		reset_data_connection();
 	}
-	if(state == loggedin){
-		dfile.mode = PASV;
-		unsigned short port = dfile.random_bind();
-		DEBUG("Random port:%d\n", (int)port);
-		this->state = datacnn_wait;
-		response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
-				get_serve_addr(), (int)((unsigned char *)(&port))[0],
-				(int)((unsigned char*)(&port))[1] );
-	}
+	dfile.mode = PASV;
+	unsigned short port = dfile.random_bind();
+	DEBUG("Random port:%d\n", (int)port);
+	this->state = datacnn_wait;
+	response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
+			get_serve_addr(), (int)((unsigned char *)(&port))[0],
+			(int)((unsigned char*)(&port))[1] );
 	do_response();
 	return CP_DONE;
+}
+
+static inline bool show_item(struct dirent *dire)
+{
+	// file name
+	if(dire->d_name[0] == '.')
+		return false;
+	// access permission
+	// not implemented
+	return true;
 }
 
 ICPF(list)
@@ -375,7 +391,8 @@ ICPF(list)
 	const std::string &request_path = working_dir.getfullpathname(param);
 	DIR *dir = opendir(request_path.c_str() );
 	if(dir == NULL){
-		dfile.reset();
+		DEBUG("open dir return NULL,param:%s\n", request_path.c_str() );
+		reset_data_connection();
 		response(426, REPLY_TRANS_ABOUT);
 		do_response();
 		return CP_DONE;
@@ -389,9 +406,9 @@ ICPF(list)
 		}
 
 		struct stat statbuf;
-		std::string fullpathname = request_dir.getfullpathname(dire->d_name);
+		std::string itemfullpathname = request_dir.getfullpathname(dire->d_name);
 		char item_line[MAX_PATH + 256];
-		if(lstat(fullpathname.c_str(), &statbuf) < 0){
+		if(lstat(itemfullpathname.c_str(), &statbuf) < 0){
 			continue;
 		}
 		
@@ -400,7 +417,8 @@ ICPF(list)
 			continue;
 		}
 
-		// access permission
+		// access permission             1 2 3 4 5 6 7 8 9 0 link uid gid length
+		//                               - r w x r - x - - -
 		int count = sprintf(item_line, "%c%c%c%c%c%c%c%c%c%c %4d %5d %5d %12ld ",
 				S_ISREG(statbuf.st_mode)?'-':'d',
 				(statbuf.st_mode & S_IRUSR)?'r':'-',
@@ -420,8 +438,8 @@ ICPF(list)
 		char *pos = item_line + count;
 		const char *mtime = ctime(&statbuf.st_mtime);
 		memcpy(pos, mtime+4, 12);
-
 		pos += 12;
+
 		*pos++ = ' ';
 		for(const char *p = dire->d_name; *p != '\0'; p++){
 			*pos++ = *p;

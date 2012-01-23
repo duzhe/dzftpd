@@ -91,31 +91,33 @@ int ftp_ctrlfile::flush()
 int ftp_ctrlfile::readline(char *linebuf)
 {
 	char *line_end = read_buf;
-	while(true){
-		while(line_end < read_buf_pos-1){
-			if(line_end[0] == '\r' && line_end[1] == '\n'){
-				// right trim
-				while(*(line_end-1) == ' '){
-					--line_end;
-				}
-				// copy line to buf
-				int line_length = line_end - read_buf;
-				memcpy(linebuf, read_buf, line_length);
-				linebuf[line_length] = '\0';
-				// move rest bytes to front
-				char *rest_begin = line_end;
-				while(*(rest_begin++) != '\n')
-					;
-				int rest_byte_count = read_buf_pos - rest_begin;
-				if(rest_byte_count != 0){
-					memmove(read_buf, rest_begin, rest_byte_count);
-				}
-				read_buf_pos  = read_buf + rest_byte_count;
-				read_buf_left = sizeof(read_buf) - rest_byte_count;
-				
-				return 0;
+	for(;;){
+		for(;line_end < read_buf_pos-1;){
+			if(line_end[0] != '\r' || line_end[1] != '\n'){
+				++line_end;
+				continue;
 			}
-			++line_end;
+
+			// right trim
+			while(*(line_end-1) == ' '){
+				--line_end;
+			}
+			// copy line to buf
+			int line_length = line_end - read_buf;
+			memcpy(linebuf, read_buf, line_length);
+			linebuf[line_length] = '\0';
+			// move rest bytes to front
+			char *rest_begin = line_end;
+			while(*(rest_begin++) != '\n')
+				;
+			int rest_byte_count = read_buf_pos - rest_begin;
+			if(rest_byte_count != 0){
+				memmove(read_buf, rest_begin, rest_byte_count);
+			}
+			read_buf_pos  = read_buf + rest_byte_count;
+			read_buf_left = sizeof(read_buf) - rest_byte_count;
+			
+			return 0;
 		}
 		int ret_val = read();
 		if(ret_val != 0){
@@ -130,12 +132,24 @@ int ftp_ctrlfile::readline(char *linebuf)
 
 int ftp_ctrlfile::read()
 {
-	int read_count = ::read(fd, read_buf_pos, read_buf_left);
-	if(read_count == -1){
-		return -1;
+	do{
+		ssize_t read_count = ::read(fd, read_buf_pos, read_buf_left);
+		if(read_count == 0){
+			return  -1;
+		}
+		if(read_count == -1){
+			switch(errno){
+				case EINTR:
+					continue;
+				default:
+					break;
+			}
+			return -1;
+		}
+		read_buf_pos += read_count;
+		read_buf_left -= read_count;
+		return 0;
 	}
-	read_buf_pos += read_count;
-	read_buf_left -= read_count;
-	return 0;
+	while(1);
 }
 

@@ -2,6 +2,8 @@ dzftp: ftpd.o ftp_server.o ftp_ctrlfile.o ftp_config.o request.o main.o ftp_data
 	g++ -g -Wall -o dzftp ftp_ctrlfile.o ftp_config.o request.o main.o ftpd.o ftp_server.o ftp_datafile.o global.o ftp_dir.o
 
 clean: 
+	rm *.o
+cleanall:
 	rm *.o dzftp
 update:tags cscope.out
 cscope.out: *.cpp *.h
