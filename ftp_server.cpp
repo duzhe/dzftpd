@@ -6,6 +6,7 @@
 #include "ftp_datafile.h"
 #include "request.h"
 #include "ftp_dir.h"
+#include "ftp_user.h"
 #include "messages.h"
 #include <strings.h>
 #include <sys/stat.h>
@@ -44,6 +45,7 @@ class ftp_server_internal
 {
 public:
 	ftp_server_internal(){state = ready;type = type_I;}
+//	ftp_server_internal(){type = type_I;}
 	int serve_it(int ctrlfd);
 
 	int response(response_code_t, const char *);
@@ -95,7 +97,7 @@ private:
 private:
 	serve_state state;
 	trans_type type;
-	std::string username;
+	ftp_user   user;
 	ftp_dir	working_dir;
 
 
@@ -315,10 +317,9 @@ ICEF(ensure_loggedin)
 #define ICPF(C) IMPLEMENT_COMMAND_PROCESS_FUNCTION(C)
 ICPF(user)
 {
-	DEBUG("command user\n");
-	const serve_state state = get_state();
-	if(state >= loggedin){
-		if(strcmp(username.c_str(), param) == 0 ){
+//	DEBUG("command user\n");
+	if(user.loggedin() ){
+		if(strcmp(user.get_username(), param) == 0 ){
 			response(331, REPLY_ANY_PSWD);
 		}
 		else{
@@ -331,7 +332,8 @@ ICPF(user)
 //	else if(!valid_username(param) ){
 //		response(530, REPLY_NOT_LOGGED_IN);
 	else{
-		username = param;
+		//username = param;
+		user.set_username(param);
 		response(331, REPLY_NEED_PSWD);
 	}
 	do_response();
@@ -340,13 +342,18 @@ ICPF(user)
 
 ICPF(pass)
 {
-	DEBUG("command pass\n");
+//	DEBUG("command pass\n");
 	DEBUG("Temporary Implementation: pass\n");
 	state = loggedin;
-	response(230 ,REPLY_LOGGED_IN);
+	if(user.login(param) ){
+		const char *homepath = user.homepath();
+		working_dir.cd(homepath);
+		response(230 ,REPLY_LOGGED_IN);
+	}
+	else{
+		response(530, REPLY_NOT_LOGGED_IN);
+	}
 	do_response();
-	const char *home = "/";
-	working_dir.cd(home);
 	return CP_DONE;
 }
 
@@ -360,7 +367,6 @@ ICPF(quit)
 
 ICPF(pasv)
 {
-	DEBUG("Temporary Implementation: pasv\n");
 	const serve_state state = get_state();
 	if(state == datacnn_wait || datacnn_ready){
 		reset_data_connection();
@@ -373,7 +379,7 @@ ICPF(pasv)
 //	response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
 //			get_serve_addr(), (int)((unsigned char *)(&port))[0],
 //			(int)((unsigned char*)(&port))[1] );
-	response_format(227, REPLY_ENTRY_PASV_MODE"(%d,%d,%d,%d,%d,%d)",
+	response_format(227, REPLY_ENTRY_PASV_MODE" (%d,%d,%d,%d,%d,%d)",
 			(int)((unsigned char *)(&host))[0],
 			(int)((unsigned char *)(&host))[1],
 			(int)((unsigned char *)(&host))[2],
@@ -511,11 +517,11 @@ ICPF(type)
 		switch(toupper(*param)){
 			case 'A':
 				this->type = type_A;
-				response(200, REPLY_COMMAND_OK);
+				response(200, REPLY_OK);
 				break;
 			case 'I':
 				this->type = type_I;
-				response(200, REPLY_COMMAND_OK);
+				response(200, REPLY_OK);
 				break;
 			default:
 				response(504, REPLY_NOT_IMPL_FOR_PARAM);
@@ -574,27 +580,33 @@ ICPF(retr)
 
 ICPF(stor)
 {
+	DEBUG("Not Implemented: stor\n");
 	return command_not_support();
 }
 
 ICPF(syst)
 {
+	DEBUG("Not Implemented: syst\n");
 	return command_not_support();
 }
 
 ICPF(feat)
 {
+	DEBUG("Not Implemented: feat\n");
 	return command_not_support();
 }
 
 ICPF(acct)
 {
+	DEBUG("Not Implemented: acct\n");
 	return command_not_support();
 }
 
 ICPF(noop)
 {
-	return command_not_support();
+	response(200, REPLY_OK);
+	do_response();
+	return CP_DONE;
 }
 
 ICPF(cwd)
