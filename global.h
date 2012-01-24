@@ -46,4 +46,3 @@ typedef unsigned int response_code_t;
 
 #include "classes.h"
 
-const char *get_serve_addr();

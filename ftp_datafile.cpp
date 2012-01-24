@@ -28,7 +28,7 @@ void ftp_datafile::reset()
 	mode = NOSP;
 }
 
-unsigned short ftp_datafile::random_bind()
+unsigned short ftp_datafile::random_bind(int host)
 {
 	if(mode != PASV){
 		return 0;
@@ -41,7 +41,8 @@ unsigned short ftp_datafile::random_bind()
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr) );
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+//	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_addr.s_addr = host;
 	servaddr.sin_port = htons(0);
 
 	int ret_val = bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr) );

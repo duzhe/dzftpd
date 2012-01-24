@@ -15,7 +15,7 @@ public:
 	data_mode mode;
 public:
 	ftp_datafile();
-	unsigned short random_bind();
+	unsigned short random_bind(int host);
 	void reset();
 	void accept_connection();
 	int write_file(const char *filename);

@@ -20,6 +20,18 @@ ftp_ctrlfile::ftp_ctrlfile(int client_ctrlfd)
 	read_buf_pos = read_buf;
 
 	set_nodelay();
+
+	struct sockaddr_in addr;
+	bzero(&addr, sizeof(addr) );
+	addr.sin_family = AF_INET;
+
+	socklen_t addrsize = sizeof(addr);
+	int ret_val = getsockname(fd, (struct sockaddr *)&addr, &addrsize);
+	if(ret_val == -1){
+		DEBUG("getsockname error\n");
+		host = 0;
+	}
+	host = addr.sin_addr.s_addr;
 }
 
 ftp_ctrlfile::~ftp_ctrlfile()
@@ -153,3 +165,7 @@ int ftp_ctrlfile::read()
 	while(1);
 }
 
+int ftp_ctrlfile::get_host()const
+{
+	return host;
+}

@@ -71,21 +71,21 @@ private:
 	DCEF(ensure_loggedin);
 	DCEF(ensure_data_connection);
 
-	DCPF(user);
-	DCPF(pass);
+	DCPF(user); // minimum implementation
+	DCPF(pass); // minimum implementation
 	DCPF(acct);
-	DCPF(port);
+	DCPF(port); // minimum implementation
 	DCPF(pasv);
 	DCPF(quit);
 	DCPF(pwd );
 	DCPF(cwd);
 	DCPF(cdup);
-	DCPF(type);
+	DCPF(type); // minimum implementation
 	DCPF(mode);
-	DCPF(stru);
-	DCPF(retr);
-	DCPF(stor);
-	DCPF(noop);
+	DCPF(stru); // minimum implementation
+	DCPF(retr); // minimum implementation
+	DCPF(stor); // minimum implementation
+	DCPF(noop); // minimum implementation
 	DCPF(list);
 	DCPF(syst);
 	DCPF(feat);
@@ -366,12 +366,21 @@ ICPF(pasv)
 		reset_data_connection();
 	}
 	dfile.mode = PASV;
-	unsigned short port = dfile.random_bind();
+	int host = ctrlfile->get_host();
+	unsigned short port = dfile.random_bind(host);
 	DEBUG("Random port:%d\n", (int)port);
 	this->state = datacnn_wait;
-	response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
-			get_serve_addr(), (int)((unsigned char *)(&port))[0],
-			(int)((unsigned char*)(&port))[1] );
+//	response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
+//			get_serve_addr(), (int)((unsigned char *)(&port))[0],
+//			(int)((unsigned char*)(&port))[1] );
+	response_format(227, REPLY_ENTRY_PASV_MODE"(%d,%d,%d,%d,%d,%d)",
+			(int)((unsigned char *)(&host))[0],
+			(int)((unsigned char *)(&host))[1],
+			(int)((unsigned char *)(&host))[2],
+			(int)((unsigned char *)(&host))[3],
+			(int)((unsigned char *)(&port))[0],
+			(int)((unsigned char *)(&port))[1] );
+
 	do_response();
 	return CP_DONE;
 }

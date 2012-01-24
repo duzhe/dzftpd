@@ -6,6 +6,7 @@ class ftp_ctrlfile
 public:
 	ftp_ctrlfile(int ctrlfd);
 	~ftp_ctrlfile();
+	int get_host()const;
 	int close();
 	int puts(const char *message);
 	int printf(const char *format, ...);
@@ -15,6 +16,7 @@ private:
 	void set_nodelay();
 private:
 	int fd;
+	int host;
 
 	size_t write_buf_left;
 	char write_buf[MAX_RESPONSE_LENGTH];
