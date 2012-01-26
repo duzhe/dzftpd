@@ -512,12 +512,45 @@ ICPF(type)
 
 ICPF(mode)
 {
-	return command_not_support();
+	DEBUG("Temporary Implementation: mode\n");
+	if(param == NULL){
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+	}
+	// Stream mode
+	else if(strcmp(param, "S") == 0){
+		response(200, REPLY_OK);
+	}
+	// Block mode
+	else if(strcmp(param, "B") == 0){
+		response(504, REPLY_NOT_IMPL_FOR_PARAM);
+	}
+	else{
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+	}
+	do_response();
+	return CP_DONE;
 }
 
 ICPF(stru)
 {
-	return command_not_support();
+	DEBUG("Temporary Implementation: retr\n");
+	if(param == NULL){
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+	}
+	else if(strcmp(param, "F") == 0){
+		response(200, REPLY_OK);
+	}
+	else if(strcmp(param, "P") == 0){
+		response(504, REPLY_NOT_IMPL_FOR_PARAM);
+	}
+	else if(strcmp(param, "P") == 0){
+		response(504, REPLY_NOT_IMPL_FOR_PARAM);
+	}
+	else{
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+	}
+	do_response();
+	return CP_DONE;
 }
 
 ICPF(retr)

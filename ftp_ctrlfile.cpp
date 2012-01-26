@@ -91,12 +91,18 @@ int ftp_ctrlfile::printf(const char *format, ...)
 int ftp_ctrlfile::flush()
 {
 //	DEBUG("client flush\n");
-	int return_code = ::write(fd, write_buf, write_buf_pos - write_buf);
-	if(return_code == -1){
-		return  -1;
+again:
+	int write_count = ::write(fd, write_buf, write_buf_pos - write_buf);
+	if(write_count == -1){
+		switch(errno){
+			case EINTR:
+				goto again;
+			default:
+				return -1;
+		}
 	}
-	write_buf_pos = write_buf;
-	write_buf_left = sizeof(write_buf);
+	write_buf_pos -= write_count;
+	write_buf_left += write_count;
 	return 0;
 }
 

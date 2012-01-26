@@ -20,4 +20,5 @@
 #define REPLY_DATACNN_ALREADY_OPEN  	"Data connection already open; transfer starting."
 #define REPLY_TRANS_ABOUT				"Connection closed; transfer aborted."
 #define REPLY_CANNOT_OPENFILE_FOR_WRITE "Cannot open file for write."
+#define REPLY_SYNTAX_ERROR_IN_PARAM		"Syntax error in parameters or arguments."
 
