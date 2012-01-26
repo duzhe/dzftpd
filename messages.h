@@ -21,4 +21,11 @@
 #define REPLY_TRANS_ABOUT				"Connection closed; transfer aborted."
 #define REPLY_CANNOT_OPENFILE_FOR_WRITE "Cannot open file for write."
 #define REPLY_SYNTAX_ERROR_IN_PARAM		"Syntax error in parameters or arguments."
-
+#define REPLY_PATHNAME_S_CREATED		"\"%s\" created."
+#define REPLY_MKDIR_NOT_SUCCESS			"Make dir not success."
+#define REPLY_RMDIR_SUCCESS				"Remove dir success."
+#define REPLY_RMDIR_NOT_SUCCESS			"Remove dir not success."
+#define REPLY_FILE_DELETED				"File deleted."
+#define REPLY_FILE_NOT_DELETED			"File not deleted."
+#define REPLY_CANT_CD_TO_PATHNAME_S		"Can't change working directory to %s"
+#define REPLY_OK_WD_IS_PATHNAME_S		"OK. Current working directory is %s"

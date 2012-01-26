@@ -71,6 +71,9 @@ private:
 	DCPF(quit);
 	DCPF(pwd );
 	DCPF(cwd);
+	DCPF(rmd);
+	DCPF(mkd);
+	DCPF(dele);
 	DCPF(cdup);
 	DCPF(type); // minimum implementation
 	DCPF(mode);
@@ -651,10 +654,10 @@ ICPF(noop)
 ICPF(cwd)
 {
 	if(working_dir.cd(param) != 0){
-		response_format(550, "Can't change working directory to %s", working_dir.pwd() );
+		response_format(550, REPLY_CANT_CD_TO_PATHNAME_S, working_dir.pwd() );
 	}
 	else{
-		response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
+		response_format(250, REPLY_OK_WD_IS_PATHNAME_S, working_dir.pwd() );
 	}
 	do_response();
 	return CP_DONE;
@@ -663,10 +666,68 @@ ICPF(cwd)
 ICPF(cdup)
 {
 	if(working_dir.cdup() != 0){
-		response_format(550, "Can't change working directory to %s", working_dir.pwd() );
+		response_format(550, REPLY_CANT_CD_TO_PATHNAME_S, working_dir.pwd() );
 	}
 	else{
-		response_format(250, "OK. Current working directory is %s", working_dir.pwd() );
+		response_format(250, REPLY_OK_WD_IS_PATHNAME_S, working_dir.pwd() );
+	}
+	do_response();
+	return CP_DONE;
+}
+
+ICPF(rmd)
+{
+	if(param == NULL){
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+		do_response();
+		return CP_DONE;
+	}
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = rmdir(fullpathname.c_str() );
+	if(ret_val == 0){
+		response(250, REPLY_RMDIR_SUCCESS);
+	}
+	else{
+		response(550, REPLY_RMDIR_NOT_SUCCESS);
+	}
+	do_response();
+	return CP_DONE;
+}
+
+#define RWXRWXRWX (S_IRWXU | S_IRWXG | S_IRWXO)
+ICPF(mkd)
+{
+	if(param == NULL){
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+		do_response();
+		return CP_DONE;
+	}
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = mkdir(fullpathname.c_str(), RWXRWXRWX);
+	if(ret_val == 0){
+		response(257,REPLY_PATHNAME_S_CREATED);
+	}
+	else{
+		response(550,REPLY_MKDIR_NOT_SUCCESS);
+	}
+	do_response();
+	return CP_DONE;
+}
+
+ICPF(dele)
+{
+	if(param == NULL){
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+		do_response();
+		return CP_DONE;
+	}
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = unlink(fullpathname.c_str() );
+	if(ret_val == 0){
+		response(250, REPLY_FILE_DELETED);
+	}
+	else{
+		response(550, REPLY_FILE_NOT_DELETED);
 	}
 	do_response();
 	return CP_DONE;
@@ -712,6 +773,9 @@ int ftp_server_internal::process_request(request *r)
 	PROCESS_MAP("PORT", command_port)
 	PROCESS_MAP("PWD", 	command_pwd)
 	PROCESS_MAP("CWD", 	command_cwd)
+	PROCESS_MAP("RMD", 	command_rmd)
+	PROCESS_MAP("MKD", 	command_mkd)
+	PROCESS_MAP("DELE", command_dele)
 	PROCESS_MAP("CDUP",	command_cdup)
 	PROCESS_MAP("NOOP", command_noop)
 	PROCESS_MAP("SYST", command_syst)
