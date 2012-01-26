@@ -15,6 +15,24 @@ ftp_datafile::ftp_datafile()
 	datafd = -1;
 }
 
+datacnn_state ftp_datafile::state()const
+{
+	if(mode == NOSP){
+		return ready;
+	}
+	if(datafd != -1){
+		return connected;
+	}
+	if(mode == PASV && listenfd != -1){
+		return pasv_wait;
+	}
+	if(mode == PORT){
+		return port_wait;
+	}
+	// never run to here
+	return ready;
+}
+
 void ftp_datafile::reset()
 {
 	if(listenfd != -1){
@@ -23,7 +41,7 @@ void ftp_datafile::reset()
 	}
 	if(datafd != -1){
 		::close(datafd);
-		listenfd = -1;
+		datafd = -1;
 	}
 	mode = NOSP;
 }
@@ -115,9 +133,9 @@ ssize_t ftp_datafile::write(const void *buf, size_t count)
 	if(datafd == -1){
 		return NO_DATA_CONNECTION;
 	}
-	do{
-		ssize_t ret_val = ::write(datafd, buf, count);
-		if(ret_val == -1){
+	for(size_t writed = 0; writed != count;){
+		ssize_t write_count = ::write(datafd, (const char*)buf +writed, count -writed);
+		if(write_count == -1){
 			switch(errno){
 				case EINTR:
 					continue;
@@ -125,7 +143,27 @@ ssize_t ftp_datafile::write(const void *buf, size_t count)
 					return CLIENT_CLOSE_DATA_CONNECTION;
 			}
 		}
-		return 0;
+		writed += write_count;
+	}
+	return 0;
+}
+
+ssize_t ftp_datafile::read(void *buf, size_t count)const
+{
+	if(datafd == -1){
+		return NO_DATA_CONNECTION;
+	}
+	do{
+		ssize_t read_count = ::read(datafd, buf, count);
+		if(read_count == -1){
+			switch(errno){
+				case EINTR:
+					continue;
+				default:
+					return CLIENT_CLOSE_DATA_CONNECTION;
+			}
+		}
+		return read_count;
 	}
 	while(true);
 	// never run to here;

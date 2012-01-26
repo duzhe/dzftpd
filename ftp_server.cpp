@@ -26,15 +26,6 @@
 #define CP_CONTINUE			1
 #define CP_CLIENT_QUIT -1
 
-
-enum serve_state 
-{
-	ready,
-	loggedin,
-	datacnn_wait,
-	datacnn_ready,
-};
-
 enum trans_type
 {
 	type_A,
@@ -44,8 +35,7 @@ enum trans_type
 class ftp_server_internal
 {
 public:
-	ftp_server_internal(){state = ready;type = type_I;}
-//	ftp_server_internal(){type = type_I;}
+	ftp_server_internal(){type = type_I;}
 	int serve_it(int ctrlfd);
 
 	int response(response_code_t, const char *);
@@ -92,10 +82,8 @@ private:
 	DCPF(syst);
 	DCPF(feat);
 
-	serve_state get_state();
 	void reset_data_connection();
 private:
-	serve_state state;
 	trans_type type;
 	ftp_user   user;
 	ftp_dir	working_dir;
@@ -121,8 +109,6 @@ ftp_server::~ftp_server()
 int ftp_server::serve_it(int client_ctrlfd)
 {
 	return internal->serve_it(client_ctrlfd);
-//	ftp_client client(client_ctrlfd);
-//	return internal->serve_it(&client);
 }
 
 int ftp_server::response(response_code_t code, const char *message)
@@ -242,9 +228,9 @@ int ftp_server_internal::clearup()
 
 void ftp_server_internal::reset_data_connection()
 {
-	if(state == datacnn_wait || state == datacnn_ready){
+	datacnn_state state = dfile.state();
+	if(state != ready){
 		dfile.reset();
-		state = loggedin;
 	}
 }
 
@@ -253,11 +239,6 @@ int ftp_server_internal::do_welcome()
 	response(220, "Welcome.");
 	do_response();
 	return 0;
-}
-
-serve_state ftp_server_internal::get_state()
-{
-	return state;
 }
 
 int ftp_server_internal::client_not_ready()
@@ -290,15 +271,21 @@ int ftp_server_internal::command_not_support()
 #define ICEF(F) IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) 
 ICEF(ensure_data_connection)
 {
-	if(state < datacnn_wait){
+	DEBUG("Temporary Implementation: ensure_data_connection\n");
+	datacnn_state state = dfile.state();
+	if(state == ready){
 		return no_data_connection();
 	}
-	if(state == datacnn_wait){
+	if(state == pasv_wait){
 		dfile.accept_connection();	
 		response(150, REPLY_DATACNN_CONNECTED);
 	}
-	else if(state == datacnn_ready){
+	else if(state == connected){
 		response(125, REPLY_DATACNN_ALREADY_OPEN);
+	}
+	else if(state == port_wait){
+		DEBUG("Port not implemented\n");
+		return no_data_connection();
 	}
 	do_response();
 	return CP_CONTINUE;
@@ -306,7 +293,7 @@ ICEF(ensure_data_connection)
 
 ICEF(ensure_loggedin)
 {
-	if(state == ready){
+	if(!user.loggedin() ){
 		return not_loggedin();
 	}
 	return CP_CONTINUE;
@@ -332,7 +319,6 @@ ICPF(user)
 //	else if(!valid_username(param) ){
 //		response(530, REPLY_NOT_LOGGED_IN);
 	else{
-		//username = param;
 		user.set_username(param);
 		response(331, REPLY_NEED_PSWD);
 	}
@@ -344,7 +330,6 @@ ICPF(pass)
 {
 //	DEBUG("command pass\n");
 	DEBUG("Temporary Implementation: pass\n");
-	state = loggedin;
 	if(user.login(param) ){
 		const char *homepath = user.homepath();
 		working_dir.cd(homepath);
@@ -365,20 +350,20 @@ ICPF(quit)
 	return CP_CLIENT_QUIT;
 }
 
+ICPF(port)
+{
+//	dfile.reset();
+//	dfile.mode = PORT;
+	return command_not_support();
+}
+
 ICPF(pasv)
 {
-	const serve_state state = get_state();
-	if(state == datacnn_wait || datacnn_ready){
-		reset_data_connection();
-	}
+	dfile.reset();
 	dfile.mode = PASV;
 	int host = ctrlfile->get_host();
 	unsigned short port = dfile.random_bind(host);
 	DEBUG("Random port:%d\n", (int)port);
-	this->state = datacnn_wait;
-//	response_format(227, REPLY_ENTRY_PASV_MODE"(%s,%d,%d)",
-//			get_serve_addr(), (int)((unsigned char *)(&port))[0],
-//			(int)((unsigned char*)(&port))[1] );
 	response_format(227, REPLY_ENTRY_PASV_MODE" (%d,%d,%d,%d,%d,%d)",
 			(int)((unsigned char *)(&host))[0],
 			(int)((unsigned char *)(&host))[1],
@@ -484,21 +469,14 @@ ICPF(list)
 	if(ret_val == 0){
 		response(226, REPLY_CLOSING_DATACNN);
 	}
-	do_response();
 	dfile.reset();
 	::closedir(dir);
-
 	do_response();
-	state = loggedin;
+
 	return CP_DONE;
 }
 
 		
-ICPF(port)
-{
-	return command_not_support();
-}
-
 ICPF(pwd)
 {
 	DEBUG("Temporary Implementation: pwd\n");
@@ -545,15 +523,6 @@ ICPF(stru)
 ICPF(retr)
 {
 	DEBUG("Temporary Implementation: retr\n");
-//	if(*param == '/'){
-//		ret_val = dfile.write_file(param);
-//	}
-//	else{
-//		std::string fullfilename = working_dir.pwd() ;
-//		fullfilename.append("/");
-//		fullfilename.append(param);
-//		ret_val = dfile.write_file(fullfilename.c_str() );
-//	}
 	const std::string &fullpathname = working_dir.getfullpathname(param);
 	int ret_val = dfile.write_file(fullpathname.c_str() );
 	switch(ret_val){
@@ -573,15 +542,52 @@ ICPF(retr)
 			response(426, REPLY_DATACNN_ABORT);
 			break;
 	}
+	dfile.reset();
 	do_response();
-	state = loggedin;
 	return CP_DONE;
 }
 
 ICPF(stor)
 {
-	DEBUG("Not Implemented: stor\n");
-	return command_not_support();
+	DEBUG("Temporary Implementation: stor\n");
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	FILE *fp = fopen(fullpathname.c_str(), "wb");
+	if(fp == NULL){
+		response(553, REPLY_CANNOT_OPENFILE_FOR_WRITE);
+		do_response();
+		return CP_DONE;
+	}
+//	const int BUF_SIZE = 4096;
+	char buf[BUF_SIZE];
+	for(;;){
+		int read_count = dfile.read(buf, BUF_SIZE);
+		if(read_count > 0){
+			fwrite(buf, 1, read_count, fp);
+			continue;
+		}
+		switch(read_count){
+			case 0:
+				response(226, REPLY_CLOSING_DATACNN);
+				break;
+			case NO_DATA_CONNECTION:
+				response(425, REPLY_CANNOT_OPEN_DATACNN);
+				break;
+			case OPEN_FILE_ERROR:
+				response(452, REPLY_CANNOT_OPEN_FILE);
+				break;
+			case CLIENT_CLOSE_DATA_CONNECTION:
+				response(426, REPLY_DATACNN_ABORT);
+				break;
+			default:
+				response(426, REPLY_DATACNN_ABORT);
+				break;
+		}
+		break;
+	}
+	fclose(fp);
+	dfile.reset();
+	do_response();
+	return CP_DONE;
 }
 
 ICPF(syst)

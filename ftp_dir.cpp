@@ -19,6 +19,11 @@ int ftp_dir::cdup()
 	if(std::string::npos == pos){
 		return -1;
 	}
+
+	if(pos == 0 && current.length() == 1){
+		return 0;
+	}
+
 	current.resize(pos);
 	if(ensure_dir(current.c_str() ) != 0){
 		return -1;

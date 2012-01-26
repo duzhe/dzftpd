@@ -9,6 +9,14 @@ enum data_mode
 	PORT,
 };
 
+enum datacnn_state
+{
+	ready,
+	pasv_wait,
+	port_wait,
+	connected,
+};
+
 class ftp_datafile
 {
 public:
@@ -19,7 +27,9 @@ public:
 	void reset();
 	void accept_connection();
 	int write_file(const char *filename);
+	ssize_t read(void *buf, size_t count)const;
 	ssize_t write(const void *buf, size_t count);
+	datacnn_state state()const;
 private:
 	int listenfd;
 	int datafd;
