@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <assert.h> 
+#include <fcntl.h>
 #include <stdarg.h>  /* for va_list */
 #include <string.h>  /* for strlen */
 #include <stdlib.h>  /* for malloc and free */
@@ -22,9 +23,10 @@
 #define ERROR_CLIENT_CLOSED -2
 
 // command process function return values:
-#define CP_DONE 		0
+#define CP_DONE 			0
 #define CP_CONTINUE			1
-#define CP_CLIENT_QUIT -1
+#define CP_CLIENT_QUIT		-1
+#define CP_INTERNAL_ERROR	-2
 
 enum trans_type
 {
@@ -41,6 +43,8 @@ public:
 	int response(response_code_t, const char *);
 	int response_format(response_code_t, const char *format, ...);
 	int do_response();
+
+	int sent_file(const char *filename);
 private:
 	int clearup();
 	int wait_request(request *r);
@@ -62,6 +66,7 @@ private:
 
 	DCEF(ensure_loggedin);
 	DCEF(ensure_data_connection);
+	int ensure_file_access(const char *filename, char item);
 
 	DCPF(user); // minimum implementation
 	DCPF(pass); // minimum implementation
@@ -212,6 +217,42 @@ int ftp_server_internal::do_response()
 	return 0;
 }
 
+int ftp_server_internal::sent_file(const char *filename)
+{
+	int fd = open(filename, O_RDONLY);
+	if(fd == -1){
+		return OPEN_FILE_ERROR;
+	}
+
+	char buf[4096];
+	for(;;){
+		ssize_t read_count = ::read(fd, buf, 4096);
+		if(read_count == -1){
+			switch(errno){
+				case EINTR:
+					continue;
+				default:
+					close(fd);
+					dfile.reset();
+					return READ_FILE_ERROR;
+			}
+		}
+		if(read_count == 0){
+			close(fd);
+			dfile.reset();
+			break;
+		}
+
+		ssize_t ret_val = dfile.write(buf, read_count);
+		if(ret_val != 0){
+			close(fd);
+			dfile.reset();
+			return ret_val;
+		}
+	}
+	return 0;
+}
+	
 int ftp_server_internal::wait_request(request *r)
 {
 	char request_line[MAX_REQUEST_LENGTH];
@@ -300,6 +341,18 @@ ICEF(ensure_loggedin)
 		return not_loggedin();
 	}
 	return CP_CONTINUE;
+}
+
+int ftp_server_internal::ensure_file_access(const char *filename, char item)
+{
+	if(test_access(filename, item) == true){
+		return CP_CONTINUE;
+	}
+	else{
+		response(550, REPLY_CANNOT_OPEN_FILE);
+		do_response();
+	}
+	return CP_DONE;
 }
 
 #define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
@@ -391,17 +444,26 @@ static inline bool show_item(struct dirent *dire)
 
 ICPF(list)
 {
-	const std::string &request_path = working_dir.getfullpathname(param);
-	DIR *dir = opendir(request_path.c_str() );
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+
+	ret_val = ensure_data_connection();
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+	DIR *dir = opendir(fullpathname.c_str() );
 	if(dir == NULL){
-		DEBUG("open dir return NULL,param:%s\n", request_path.c_str() );
+		DEBUG("open dir return NULL,param:%s\n", fullpathname.c_str() );
 		reset_data_connection();
 		response(426, REPLY_TRANS_ABOUT);
 		do_response();
 		return CP_DONE;
 	}
-	ftp_dir request_dir(request_path.c_str() );
-	int ret_val = 0;
+	ftp_dir request_dir(fullpathname.c_str() );
+	ret_val = 0;
 	for(struct dirent *dire = readdir(dir); dire != NULL ;dire = readdir(dir) ){
 		// file name
 		if(dire->d_name[0] == '.' ){
@@ -536,7 +598,7 @@ ICPF(mode)
 
 ICPF(stru)
 {
-	DEBUG("Temporary Implementation: retr\n");
+	DEBUG("Temporary Implementation: stru\n");
 	if(param == NULL){
 		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
 	}
@@ -558,9 +620,19 @@ ICPF(stru)
 
 ICPF(retr)
 {
-	DEBUG("Temporary Implementation: retr\n");
 	const std::string &fullpathname = working_dir.getfullpathname(param);
-	int ret_val = dfile.write_file(fullpathname.c_str() );
+	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+
+	ret_val = ensure_data_connection();
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+	DEBUG("Temporary Implementation: retr\n");
+	ret_val = sent_file(fullpathname.c_str() );
+//	int ret_val = dfile.write_file(fullpathname.c_str() );
 	switch(ret_val){
 		case 0:
 			response(226, REPLY_CLOSING_DATACNN);
@@ -569,7 +641,7 @@ ICPF(retr)
 			response(425, REPLY_CANNOT_OPEN_DATACNN);
 			break;
 		case OPEN_FILE_ERROR:
-			response(452, REPLY_CANNOT_OPEN_FILE);
+			response(451, REPLY_CANNOT_OPEN_FILE);
 			break;
 		case CLIENT_CLOSE_DATA_CONNECTION:
 			response(426, REPLY_DATACNN_ABORT);
@@ -585,8 +657,18 @@ ICPF(retr)
 
 ICPF(stor)
 {
-	DEBUG("Temporary Implementation: stor\n");
 	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val;
+	ret_val = ensure_file_access(fullpathname.c_str(), 'w');
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+
+	ret_val = ensure_data_connection();
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+	DEBUG("Temporary Implementation: stor\n");
 	FILE *fp = fopen(fullpathname.c_str(), "wb");
 	if(fp == NULL){
 		response(553, REPLY_CANNOT_OPENFILE_FOR_WRITE);
@@ -653,6 +735,12 @@ ICPF(noop)
 
 ICPF(cwd)
 {
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+	int ret_val = ensure_file_access(fullpathname.c_str(), 'x');
+	if(ret_val != CP_CONTINUE){
+		return ret_val;
+	}
+
 	if(working_dir.cd(param) != 0){
 		response_format(550, REPLY_CANT_CD_TO_PATHNAME_S, working_dir.pwd() );
 	}
@@ -780,7 +868,7 @@ int ftp_server_internal::process_request(request *r)
 	PROCESS_MAP("NOOP", command_noop)
 	PROCESS_MAP("SYST", command_syst)
 	PROCESS_MAP("FEAT", command_feat)
-	PROCESS_ENSURE(ensure_data_connection)
+//	PROCESS_ENSURE(ensure_data_connection)
 	PROCESS_MAP("RETR", command_retr)
 	PROCESS_MAP("STOR", command_stor)
 	PROCESS_MAP("LIST", command_list)

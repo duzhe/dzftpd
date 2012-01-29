@@ -1,18 +1,60 @@
 #include "global.h"
+#include <fcntl.h>
+#include <unistd.h>
 
-union ip4_addr
+static const char *get_parent_path(const char *filename)
 {
-	unsigned char addr_byte[4];
-	int 		  addr_int;
-};
+	static char parent_path[MAX_PATH];
+//	char *p1 = parent_path;
+//	const char *p2 = filename;
+//	const char *slash = filename;
+//	while(*slash != '\0'){
+//		while(*slash != '/' && *slash!= '\0'){
+//			slash++;
+//		}
+//		while(p2 < slash){
+//			*p1++ = *p2++;
+//		}
+//		slash++;
+//	}
+	char *p1 = parent_path;
+	const char *p2 = filename;
+	for(; *p2 != '\0';){
+		*p1++ = *p2++;
+	}
+	while(*p1 != '/' ){
+		--p1;
+	}
+	*p1 = '\0';
+	return parent_path;
+}
 
-//int get_serve_addr()
-//{
-//	ip4_addr addr;
-//	addr.addr_byte[0] = 192;
-//	addr.addr_byte[1] = 168;
-//	addr.addr_byte[2] = 1;
-//	addr.addr_byte[3] = 80;
-//	return addr.addr_int;
-//}
-
+bool test_access(const char *filename, char item)
+{
+	int mode;
+	switch(item){
+		case 'r':
+			mode = R_OK;
+			break;
+		case 'w':
+			mode = W_OK;
+			break;
+		case 'x':
+			mode = X_OK;
+			break;
+		case 'f':
+			mode = F_OK;
+			break;
+		default:
+			return false;
+	}
+	int ret_val = access(filename, mode);
+	if(ret_val == 0){
+		return true;
+	}
+	else if(item != 'w'){
+		return false;
+	}
+	const char *parent_path = get_parent_path(filename);
+	return test_access(parent_path, 'w');
+}

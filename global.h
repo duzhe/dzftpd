@@ -46,3 +46,4 @@ typedef unsigned int response_code_t;
 
 #include "classes.h"
 
+bool test_access(const char *filename, char item);

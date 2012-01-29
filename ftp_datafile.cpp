@@ -84,40 +84,40 @@ in_port_t ftp_datafile::random_bind(in_addr_t host)
 	return (servaddr.sin_port);
 }
 
-int ftp_datafile::write_file(const char *filename)
-{
-	if(datafd == -1){
-		return NO_DATA_CONNECTION;
-	}
-	int file = open(filename, O_RDONLY);
-	if(file == -1){
-		return OPEN_FILE_ERROR;
-	}
-	char buf[1024];
-	while(true){
-		ssize_t ret_val = ::read(file, buf, 1024);
-		if(ret_val == -1){
-			close(file);
-			close(datafd);
-			datafd = -1;
-			return READ_FILE_ERROR;
-		}
-		if(ret_val == 0){
-			close(file);
-			close(datafd);
-			datafd = -1;
-			return 0;
-		}
-		
-		ret_val = ::write(datafd, buf, ret_val);
-		if(ret_val == -1){
-			close(file);
-			close(datafd);
-			datafd = -1;
-			return CLIENT_CLOSE_DATA_CONNECTION;
-		}
-	}
-}
+//int ftp_datafile::write_file(const char *filename)
+//{
+//	if(datafd == -1){
+//		return NO_DATA_CONNECTION;
+//	}
+//	int file = open(filename, O_RDONLY);
+//	if(file == -1){
+//		return OPEN_FILE_ERROR;
+//	}
+//	char buf[1024];
+//	while(true){
+//		ssize_t ret_val = ::read(file, buf, 1024);
+//		if(ret_val == -1){
+//			close(file);
+//			close(datafd);
+//			datafd = -1;
+//			return READ_FILE_ERROR;
+//		}
+//		if(ret_val == 0){
+//			close(file);
+//			close(datafd);
+//			datafd = -1;
+//			return 0;
+//		}
+//		
+//		ret_val = ::write(datafd, buf, ret_val);
+//		if(ret_val == -1){
+//			close(file);
+//			close(datafd);
+//			datafd = -1;
+//			return CLIENT_CLOSE_DATA_CONNECTION;
+//		}
+//	}
+//}
 
 void ftp_datafile::accept_connection()
 {

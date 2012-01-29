@@ -26,7 +26,7 @@ public:
 	in_port_t random_bind(in_addr_t host);
 	void reset();
 	void accept_connection();
-	int write_file(const char *filename);
+//	int write_file(const char *filename);
 	ssize_t read(void *buf, size_t count)const;
 	ssize_t write(const void *buf, size_t count);
 	datacnn_state state()const;
