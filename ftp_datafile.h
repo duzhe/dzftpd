@@ -1,6 +1,6 @@
 #ifndef DZFTP_FTP_DATAFILE_H_INCLUDE
 #define DZFTP_FTP_DATAFILE_H_INCLUDE
-
+#include <netinet/in.h>
 
 enum data_mode
 {
@@ -23,7 +23,7 @@ public:
 	data_mode mode;
 public:
 	ftp_datafile();
-	unsigned short random_bind(int host);
+	in_port_t random_bind(in_addr_t host);
 	void reset();
 	void accept_connection();
 	int write_file(const char *filename);

@@ -1,12 +1,12 @@
 #ifndef DZFTP_FTP_CTRLFILE_H_INCLUDE
 #define DZFTP_FTP_CTRLFILE_H_INCLUDE
-
+#include <netinet/in.h>
 class ftp_ctrlfile
 {
 public:
 	ftp_ctrlfile(int ctrlfd);
 	~ftp_ctrlfile();
-	int get_host()const;
+	in_addr_t get_host_addr()const;
 	int close();
 	int puts(const char *message);
 	int printf(const char *format, ...);
@@ -16,7 +16,7 @@ private:
 	void set_nodelay();
 private:
 	int fd;
-	int host;
+	mutable in_addr_t addr;
 
 	size_t write_buf_left;
 	char write_buf[MAX_RESPONSE_LENGTH];

@@ -46,7 +46,7 @@ void ftp_datafile::reset()
 	mode = NOSP;
 }
 
-unsigned short ftp_datafile::random_bind(int host)
+in_port_t ftp_datafile::random_bind(in_addr_t host)
 {
 	if(mode != PASV){
 		return 0;

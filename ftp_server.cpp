@@ -364,14 +364,14 @@ ICPF(pasv)
 {
 	dfile.reset();
 	dfile.mode = PASV;
-	int host = ctrlfile->get_host();
-	unsigned short port = dfile.random_bind(host);
+	in_addr_t addr = ctrlfile->get_host_addr();
+	in_port_t port = dfile.random_bind(addr);
 	DEBUG("Random port:%d\n", (int)port);
 	response_format(227, REPLY_ENTRY_PASV_MODE" (%d,%d,%d,%d,%d,%d)",
-			(int)((unsigned char *)(&host))[0],
-			(int)((unsigned char *)(&host))[1],
-			(int)((unsigned char *)(&host))[2],
-			(int)((unsigned char *)(&host))[3],
+			(int)((unsigned char *)(&addr))[0],
+			(int)((unsigned char *)(&addr))[1],
+			(int)((unsigned char *)(&addr))[2],
+			(int)((unsigned char *)(&addr))[3],
 			(int)((unsigned char *)(&port))[0],
 			(int)((unsigned char *)(&port))[1] );
 
