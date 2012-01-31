@@ -1,12 +1,6 @@
 #include "global.h"
 #include "ftp_dir.h"
 
-static int ensure_dir(const char *pathname)
-{
-	DEBUG("Temporary Implementation: ensure_dir\n");
-	return 0;
-}
-
 ftp_dir::ftp_dir(const char *homepath)
 {
 	dir = homepath;
@@ -14,31 +8,30 @@ ftp_dir::ftp_dir(const char *homepath)
 
 int ftp_dir::cdup()
 {
-	std::string current = dir;
-	std::string::size_type pos = current.rfind('/');
+	std::string::size_type pos = dir.rfind('/');
 	if(std::string::npos == pos){
 		return -1;
 	}
 
-	if(pos == 0 && current.length() == 1){
+	if(pos == 0 && dir.length() == 1){
 		return 0;
 	}
 
-	current.resize(pos);
-	if(ensure_dir(current.c_str() ) != 0){
+	std::string new_dir(dir, pos);
+	if(test_access(new_dir.c_str(), 'x') == false){
 		return -1;
 	}
-	std::swap(current, dir);
+	dir.swap(new_dir);
 	return 0;
 }
 
 int ftp_dir::cd(const char *pathname)
 {
-	const std::string &fullpathname = getfullpathname(pathname);
-	if(ensure_dir(fullpathname.c_str() ) != 0 ){
+	const std::string &new_dir = getfullpathname(pathname);
+	if(test_access(new_dir.c_str(), 'x') == false ){
 		return -1;
 	}
-	dir = fullpathname;
+	dir = new_dir;
 	return 0;
 }
 

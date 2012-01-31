@@ -358,6 +358,36 @@ int ftp_server_internal::ensure_file_access(const char *filename, char item)
 #define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
 		const char *param)
 #define ICPF(C) IMPLEMENT_COMMAND_PROCESS_FUNCTION(C)
+
+#define ENSURE_PARAM()	\
+	if(param == NULL){	\
+		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);	\
+		do_response();	\
+		return CP_DONE;\
+	}\
+
+#define ENSURE_FULLPATHNAME()\
+	const std::string &fullpathname = working_dir.getfullpathname(param);
+
+#define ENSURE_FILEACCESS(ITEM)\
+ENSURE_FULLPATHNAME()\
+{\
+	int ret_val = ensure_file_access(fullpathname.c_str(), ITEM);\
+	if(ret_val != CP_CONTINUE){\
+		return ret_val;\
+	}\
+}
+
+#define ENSURE_DATACONN()\
+{\
+	int ret_val = ensure_data_connection();\
+	if(ret_val != CP_CONTINUE){\
+		return ret_val;\
+	}\
+}
+
+	
+
 ICPF(user)
 {
 //	DEBUG("command user\n");
@@ -444,16 +474,18 @@ static inline bool show_item(struct dirent *dire)
 
 ICPF(list)
 {
-	const std::string &fullpathname = working_dir.getfullpathname(param);
-	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_FILEACCESS('r')
 
-	ret_val = ensure_data_connection();
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
+//	ret_val = ensure_data_connection();
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_DATACONN();
 	DIR *dir = opendir(fullpathname.c_str() );
 	if(dir == NULL){
 		DEBUG("open dir return NULL,param:%s\n", fullpathname.c_str() );
@@ -463,7 +495,7 @@ ICPF(list)
 		return CP_DONE;
 	}
 	ftp_dir request_dir(fullpathname.c_str() );
-	ret_val = 0;
+	int ret_val = 0;
 	for(struct dirent *dire = readdir(dir); dire != NULL ;dire = readdir(dir) ){
 		// file name
 		if(dire->d_name[0] == '.' ){
@@ -578,11 +610,13 @@ ICPF(type)
 ICPF(mode)
 {
 	DEBUG("Temporary Implementation: mode\n");
-	if(param == NULL){
-		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-	}
+//	if(param == NULL){
+//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+//	}
+	ENSURE_PARAM();
 	// Stream mode
-	else if(strcmp(param, "S") == 0){
+//	else if(strcmp(param, "S") == 0){
+	if(strcmp(param, "S") == 0){
 		response(200, REPLY_OK);
 	}
 	// Block mode
@@ -599,16 +633,18 @@ ICPF(mode)
 ICPF(stru)
 {
 	DEBUG("Temporary Implementation: stru\n");
-	if(param == NULL){
-		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-	}
-	else if(strcmp(param, "F") == 0){
+//	if(param == NULL){
+//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+//	}
+//	else if(strcmp(param, "F") == 0){
+	ENSURE_PARAM();
+	if(strcmp(param, "F") == 0){
 		response(200, REPLY_OK);
 	}
 	else if(strcmp(param, "P") == 0){
 		response(504, REPLY_NOT_IMPL_FOR_PARAM);
 	}
-	else if(strcmp(param, "P") == 0){
+	else if(strcmp(param, "R") == 0){
 		response(504, REPLY_NOT_IMPL_FOR_PARAM);
 	}
 	else{
@@ -620,18 +656,19 @@ ICPF(stru)
 
 ICPF(retr)
 {
-	const std::string &fullpathname = working_dir.getfullpathname(param);
-	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
-
-	ret_val = ensure_data_connection();
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_FULLPATHNAME();
+//	ret_val = ensure_data_connection();
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_DATACONN();
 	DEBUG("Temporary Implementation: retr\n");
-	ret_val = sent_file(fullpathname.c_str() );
+	int ret_val = sent_file(fullpathname.c_str() );
 //	int ret_val = dfile.write_file(fullpathname.c_str() );
 	switch(ret_val){
 		case 0:
@@ -657,17 +694,19 @@ ICPF(retr)
 
 ICPF(stor)
 {
-	const std::string &fullpathname = working_dir.getfullpathname(param);
-	int ret_val;
-	ret_val = ensure_file_access(fullpathname.c_str(), 'w');
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	int ret_val;
+//	ret_val = ensure_file_access(fullpathname.c_str(), 'w');
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_FILEACCESS('w');
 
-	ret_val = ensure_data_connection();
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
+//	ret_val = ensure_data_connection();
+//	if(ret_val != CP_CONTINUE){
+//		return ret_val;
+//	}
+	ENSURE_DATACONN();
 	DEBUG("Temporary Implementation: stor\n");
 	FILE *fp = fopen(fullpathname.c_str(), "wb");
 	if(fp == NULL){
@@ -735,12 +774,6 @@ ICPF(noop)
 
 ICPF(cwd)
 {
-	const std::string &fullpathname = working_dir.getfullpathname(param);
-	int ret_val = ensure_file_access(fullpathname.c_str(), 'x');
-	if(ret_val != CP_CONTINUE){
-		return ret_val;
-	}
-
 	if(working_dir.cd(param) != 0){
 		response_format(550, REPLY_CANT_CD_TO_PATHNAME_S, working_dir.pwd() );
 	}
@@ -765,12 +798,14 @@ ICPF(cdup)
 
 ICPF(rmd)
 {
-	if(param == NULL){
-		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-		do_response();
-		return CP_DONE;
-	}
-	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	if(param == NULL){
+//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+//		do_response();
+//		return CP_DONE;
+//	}
+	ENSURE_PARAM();
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+	ENSURE_FILEACCESS('w');
 	int ret_val = rmdir(fullpathname.c_str() );
 	if(ret_val == 0){
 		response(250, REPLY_RMDIR_SUCCESS);
@@ -785,12 +820,14 @@ ICPF(rmd)
 #define RWXRWXRWX (S_IRWXU | S_IRWXG | S_IRWXO)
 ICPF(mkd)
 {
-	if(param == NULL){
-		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-		do_response();
-		return CP_DONE;
-	}
-	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	if(param == NULL){
+//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+//		do_response();
+//		return CP_DONE;
+//	}
+	ENSURE_PARAM();
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+	ENSURE_FULLPATHNAME();
 	int ret_val = mkdir(fullpathname.c_str(), RWXRWXRWX);
 	if(ret_val == 0){
 		response(257,REPLY_PATHNAME_S_CREATED);
@@ -804,12 +841,14 @@ ICPF(mkd)
 
 ICPF(dele)
 {
-	if(param == NULL){
-		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-		do_response();
-		return CP_DONE;
-	}
-	const std::string &fullpathname = working_dir.getfullpathname(param);
+//	if(param == NULL){
+//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
+//		do_response();
+//		return CP_DONE;
+//	}
+	ENSURE_PARAM();
+//	const std::string &fullpathname = working_dir.getfullpathname(param);
+	ENSURE_FULLPATHNAME();
 	int ret_val = unlink(fullpathname.c_str() );
 	if(ret_val == 0){
 		response(250, REPLY_FILE_DELETED);
