@@ -50,9 +50,11 @@ bool test_access(const char *filename, char item)
 	}
 	int ret_val = access(filename, mode);
 	if(ret_val == 0){
+		DEBUG("test_access OK: %s %c \n", filename, item);
 		return true;
 	}
 	else if(item != 'w'){
+		DEBUG("test_access Fail: %s %c \n", filename, item);
 		return false;
 	}
 	const char *parent_path = get_parent_path(filename);

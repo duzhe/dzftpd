@@ -21,11 +21,11 @@ static void sig_child(int)
 {
 	while(true){
 		int exit_val = 0;
-		int ret_val = waitpid(-1, &exit_val, WNOHANG);
-		if(ret_val == 0){
+		pid_t ret_val = waitpid(-1, &exit_val, WNOHANG);
+		if(ret_val <= 0){
 			break;
 		}
-		DEBUG("child process exit: %d\n", ret_val);
+		DEBUG("child process exit: %d\n", exit_val);
 	}
 }
 

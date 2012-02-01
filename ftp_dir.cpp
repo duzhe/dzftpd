@@ -17,7 +17,7 @@ int ftp_dir::cdup()
 		return 0;
 	}
 
-	std::string new_dir(dir, pos);
+	std::string new_dir(dir, 0, pos);
 	if(test_access(new_dir.c_str(), 'x') == false){
 		return -1;
 	}
