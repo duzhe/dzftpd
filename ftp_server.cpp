@@ -49,12 +49,12 @@ private:
 	int clearup();
 	int wait_request(request *r);
 	int serve();
-#define DECLEARE_COMMAND_PROCESS_FUNCTION(COMMAND) int command_##COMMAND(const char *param)
-#define DCPF(C) DECLEARE_COMMAND_PROCESS_FUNCTION(C)
-#define DECLEARE_COMMAND_ABORT_FUNCTION(FUNCTION) int FUNCTION()
-#define DCAF(F)	DECLEARE_COMMAND_ABORT_FUNCTION(F)
-#define DECLEARE_COMMAND_ENSURE_FUNCTION(ENSURE_FUNCTION) int ENSURE_FUNCTION()
-#define DCEF(F)	DECLEARE_COMMAND_ENSURE_FUNCTION(F)
+//DECLEARE_COMMAND_PROCESS_FUNCTION(COMMAND)
+#define DCPF(COMMAND) int command_##COMMAND(const char *param)
+//DECLEARE_COMMAND_ABORT_FUNCTION(FUNCTION)
+#define DCAF(FUNCTION)	int FUNCTION()
+//DECLEARE_COMMAND_ENSURE_FUNCTION(ENSURE_FUNCTION) int ENSURE_FUNCTION()
+#define DCEF(ENSURE_FUNCTION)	int ENSURE_FUNCTION()
 	int process_request(request *r);
 
 	DCAF(do_welcome);
@@ -62,7 +62,6 @@ private:
 	DCAF(client_not_ready);
 	DCAF(no_data_connection);
 	DCAF(command_not_support);
-//	DCAF(ensure_data_connection);
 
 	DCEF(ensure_loggedin);
 	DCEF(ensure_data_connection);
@@ -311,8 +310,8 @@ int ftp_server_internal::command_not_support()
 	return CP_DONE;
 }
 
-#define IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) int ftp_server_internal::F()
-#define ICEF(F) IMPLEMENT_COMMAND_ENSURE_FUNCTION(F) 
+//IMPLEMENT_COMMAND_ENSURE_FUNCTION(F)
+#define ICEF(F) int ftp_server_internal::F()
 ICEF(ensure_data_connection)
 {
 	DEBUG("Temporary Implementation: ensure_data_connection\n");
@@ -355,10 +354,10 @@ int ftp_server_internal::ensure_file_access(const char *filename, char item)
 	return CP_DONE;
 }
 
-#define IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND) int ftp_server_internal::command_##COMMAND( \
-		const char *param)
-#define ICPF(C) IMPLEMENT_COMMAND_PROCESS_FUNCTION(C)
+//IMPLEMENT_COMMAND_PROCESS_FUNCTION(COMMAND)
+#define ICPF(CMD) int ftp_server_internal::command_##CMD(const char *param)
 
+// ENSURE MACROS
 #define ENSURE_PARAM()	\
 	if(param == NULL){	\
 		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);	\
@@ -390,7 +389,6 @@ ENSURE_FULLPATHNAME()\
 
 ICPF(user)
 {
-//	DEBUG("command user\n");
 	if(user.loggedin() ){
 		if(strcmp(user.get_username(), param) == 0 ){
 			response(331, REPLY_ANY_PSWD);
@@ -414,7 +412,6 @@ ICPF(user)
 
 ICPF(pass)
 {
-//	DEBUG("command pass\n");
 	DEBUG("Temporary Implementation: pass\n");
 	if(user.login(param) ){
 		const char *homepath = user.homepath();
@@ -474,17 +471,7 @@ static inline bool show_item(struct dirent *dire)
 
 ICPF(list)
 {
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
-//	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_FILEACCESS('r')
-
-//	ret_val = ensure_data_connection();
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_DATACONN();
 	DIR *dir = opendir(fullpathname.c_str() );
 	if(dir == NULL){
@@ -497,8 +484,7 @@ ICPF(list)
 	ftp_dir request_dir(fullpathname.c_str() );
 	int ret_val = 0;
 	for(struct dirent *dire = readdir(dir); dire != NULL ;dire = readdir(dir) ){
-		// file name
-		if(dire->d_name[0] == '.' ){
+		if(!show_item(dire)){
 			continue;
 		}
 
@@ -533,9 +519,15 @@ ICPF(list)
 				statbuf.st_size
 			   );
 		char *pos = item_line + count;
+
+		// ctime convert time_t into a null-terminated string of the form:
+		//Wed Jun 30 21:49:08 1993\n"
+		// the form we need is:
+		//	  Jun 30 21:49
+		//0123456789012345678901234
 		const char *mtime = ctime(&statbuf.st_mtime);
-		memcpy(pos, mtime+4, 12);
-		pos += 12;
+		memcpy(pos, mtime+4, 16-4);
+		pos += (16-4);
 
 		*pos++ = ' ';
 		for(const char *p = dire->d_name; *p != '\0'; p++){
@@ -576,8 +568,14 @@ ICPF(list)
 		
 ICPF(pwd)
 {
-	DEBUG("Temporary Implementation: pwd\n");
-	response_format(257, "\"%s\"", working_dir.pwd() );
+	const char *cwd = working_dir.pwd();
+	if(cwd != NULL){
+		response_format(257, REPLY_PATHNAME_S_IS_YOUR_CWD, cwd);
+	}
+	else{
+		response(550, REPLY_CANNOT_GET_CWD);
+	}
+
 	do_response();
 	return CP_DONE;
 }
@@ -609,13 +607,9 @@ ICPF(type)
 
 ICPF(mode)
 {
-	DEBUG("Temporary Implementation: mode\n");
-//	if(param == NULL){
-//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-//	}
 	ENSURE_PARAM();
+	// Only support "Stream" mode
 	// Stream mode
-//	else if(strcmp(param, "S") == 0){
 	if(strcmp(param, "S") == 0){
 		response(200, REPLY_OK);
 	}
@@ -632,12 +626,8 @@ ICPF(mode)
 
 ICPF(stru)
 {
-	DEBUG("Temporary Implementation: stru\n");
-//	if(param == NULL){
-//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-//	}
-//	else if(strcmp(param, "F") == 0){
 	ENSURE_PARAM();
+	// only support "File" structure
 	if(strcmp(param, "F") == 0){
 		response(200, REPLY_OK);
 	}
@@ -656,20 +646,9 @@ ICPF(stru)
 
 ICPF(retr)
 {
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
-//	int ret_val = ensure_file_access(fullpathname.c_str(), 'r');
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_FULLPATHNAME();
-//	ret_val = ensure_data_connection();
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_DATACONN();
-	DEBUG("Temporary Implementation: retr\n");
 	int ret_val = sent_file(fullpathname.c_str() );
-//	int ret_val = dfile.write_file(fullpathname.c_str() );
 	switch(ret_val){
 		case 0:
 			response(226, REPLY_CLOSING_DATACNN);
@@ -694,18 +673,8 @@ ICPF(retr)
 
 ICPF(stor)
 {
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
-//	int ret_val;
-//	ret_val = ensure_file_access(fullpathname.c_str(), 'w');
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_FILEACCESS('w');
 
-//	ret_val = ensure_data_connection();
-//	if(ret_val != CP_CONTINUE){
-//		return ret_val;
-//	}
 	ENSURE_DATACONN();
 	DEBUG("Temporary Implementation: stor\n");
 	FILE *fp = fopen(fullpathname.c_str(), "wb");
@@ -714,7 +683,6 @@ ICPF(stor)
 		do_response();
 		return CP_DONE;
 	}
-//	const int BUF_SIZE = 4096;
 	char buf[BUF_SIZE];
 	for(;;){
 		int read_count = dfile.read(buf, BUF_SIZE);
@@ -798,13 +766,7 @@ ICPF(cdup)
 
 ICPF(rmd)
 {
-//	if(param == NULL){
-//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-//		do_response();
-//		return CP_DONE;
-//	}
 	ENSURE_PARAM();
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
 	ENSURE_FILEACCESS('w');
 	int ret_val = rmdir(fullpathname.c_str() );
 	if(ret_val == 0){
@@ -820,15 +782,9 @@ ICPF(rmd)
 #define RWXRWXRWX (S_IRWXU | S_IRWXG | S_IRWXO)
 ICPF(mkd)
 {
-//	if(param == NULL){
-//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-//		do_response();
-//		return CP_DONE;
-//	}
 	ENSURE_PARAM();
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
 	ENSURE_FULLPATHNAME();
-	int ret_val = mkdir(fullpathname.c_str(), RWXRWXRWX);
+	int ret_val = ::mkdir(fullpathname.c_str(), RWXRWXRWX);
 	if(ret_val == 0){
 		response(257,REPLY_PATHNAME_S_CREATED);
 	}
@@ -841,15 +797,9 @@ ICPF(mkd)
 
 ICPF(dele)
 {
-//	if(param == NULL){
-//		response(501, REPLY_SYNTAX_ERROR_IN_PARAM);
-//		do_response();
-//		return CP_DONE;
-//	}
 	ENSURE_PARAM();
-//	const std::string &fullpathname = working_dir.getfullpathname(param);
 	ENSURE_FULLPATHNAME();
-	int ret_val = unlink(fullpathname.c_str() );
+	int ret_val = ::unlink(fullpathname.c_str() );
 	if(ret_val == 0){
 		response(250, REPLY_FILE_DELETED);
 	}

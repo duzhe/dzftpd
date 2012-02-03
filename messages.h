@@ -29,3 +29,5 @@
 #define REPLY_FILE_NOT_DELETED			"File not deleted."
 #define REPLY_CANT_CD_TO_PATHNAME_S		"Can't change working directory to %s"
 #define REPLY_OK_WD_IS_PATHNAME_S		"OK. Current working directory is %s"
+#define REPLY_PATHNAME_S_IS_YOUR_CWD	"\"%s\" is current working directory."
+#define REPLY_CANNOT_GET_CWD			"Cannot get current working directory."
