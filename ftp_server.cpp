@@ -1,6 +1,5 @@
 #include "global.h"
 #include "ftp_server.h"
-//#include "ftp_client.h"
 #include "ftp_ctrlfile.h"
 #include "ftp_config.h"
 #include "ftp_datafile.h"
@@ -389,7 +388,10 @@ ENSURE_FULLPATHNAME()\
 
 ICPF(user)
 {
-	if(user.loggedin() ){
+	if(param == NULL || *param == '\0' ){
+		response(332, REPLY_NEED_USER);
+	}
+	else if(user.loggedin() ){
 		if(strcmp(user.get_username(), param) == 0 ){
 			response(331, REPLY_ANY_PSWD);
 		}
@@ -397,11 +399,6 @@ ICPF(user)
 			response(530, REPLY_CANNOT_CHANGE_USER);
 		}
 	}
-	else if(param == NULL || *param == '\0' ){
-		response(332, REPLY_NEED_USER);
-	}
-//	else if(!valid_username(param) ){
-//		response(530, REPLY_NOT_LOGGED_IN);
 	else{
 		user.set_username(param);
 		response(331, REPLY_NEED_PSWD);
@@ -674,7 +671,6 @@ ICPF(retr)
 ICPF(stor)
 {
 	ENSURE_FILEACCESS('w');
-
 	ENSURE_DATACONN();
 	DEBUG("Temporary Implementation: stor\n");
 	FILE *fp = fopen(fullpathname.c_str(), "wb");
