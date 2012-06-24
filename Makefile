@@ -1,10 +1,10 @@
-dzftp: ftpd.o ftp_server.o ftp_ctrlfile.o ftp_config.o request.o main.o ftp_datafile.o global.o ftp_dir.o ftp_user.o
-	g++ -g -Wall -o dzftp ftp_ctrlfile.o ftp_config.o request.o main.o ftpd.o ftp_server.o ftp_datafile.o global.o ftp_dir.o ftp_user.o 
+dzftpd: ftpd.o ftp_server.o ftp_ctrlfile.o ftp_config.o request.o main.o ftp_datafile.o global.o ftp_dir.o ftp_user.o
+	g++ -g -Wall -o dzftpd ftp_ctrlfile.o ftp_config.o request.o main.o ftpd.o ftp_server.o ftp_datafile.o global.o ftp_dir.o ftp_user.o -lcrypt
 
 clean: 
 	rm *.o
 cleanall:
-	rm *.o dzftp
+	rm *.o dzftpd
 update:tags cscope.out
 cscope.out: *.cpp *.h
 	cscope -Rbk

@@ -31,6 +31,7 @@ static const char *get_parent_path(const char *filename)
 
 bool test_access(const char *filename, char item)
 {
+	DEBUG("test_access: %s %c \n", filename, item);
 	int mode;
 	switch(item){
 		case 'r':

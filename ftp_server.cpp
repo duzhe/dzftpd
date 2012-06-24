@@ -117,26 +117,6 @@ int ftp_server::serve_it(int client_ctrlfd)
 	return internal->serve_it(client_ctrlfd);
 }
 
-int ftp_server::response(response_code_t code, const char *message)
-{
-	return internal->response(code, message);
-}
-
-int ftp_server::response_format(response_code_t code, const char *format, ...)
-{
-	char message[MAX_RESPONSE_LENGTH];
-	va_list ap;
-	va_start(ap, format);
-	vsnprintf(message, sizeof(message), format, ap);
-	va_end(ap);	
-	return internal->response(code, message);
-}
-
-int ftp_server::do_response()
-{
-	return internal->do_response();
-}
-
 //---------vvvvvvvvvvvv------- internal methods -------vvvvvvvvvvvvvv---------
 
 int ftp_server_internal::serve_it(int ctrlfd)
@@ -388,10 +368,10 @@ ENSURE_FULLPATHNAME()\
 
 ICPF(user)
 {
-	if(param == NULL || *param == '\0' ){
+	if (param == NULL || *param == '\0' ){
 		response(332, REPLY_NEED_USER);
 	}
-	else if(user.loggedin() ){
+	else if (user.loggedin() ){
 		if(strcmp(user.get_username(), param) == 0 ){
 			response(331, REPLY_ANY_PSWD);
 		}
@@ -410,10 +390,14 @@ ICPF(user)
 ICPF(pass)
 {
 	DEBUG("Temporary Implementation: pass\n");
-	if(user.login(param) ){
-		const char *homepath = user.homepath();
-		working_dir.cd(homepath);
+	int login_result = user.login(param);
+	if ( login_result == LOGIN_ERROR_SUCCESS){
+		working_dir.init(&user);
 		response(230 ,REPLY_LOGGED_IN);
+	}
+	else if (login_result == LOGIN_ERROR_CANNOT_AUTH )
+	{
+		response(530, REPLY_CANNOT_AUTH_USER);
 	}
 	else{
 		response(530, REPLY_NOT_LOGGED_IN);
@@ -468,8 +452,10 @@ static inline bool show_item(struct dirent *dire)
 
 ICPF(list)
 {
+	DEBUG("begin list\n");
 	ENSURE_FILEACCESS('r')
 	ENSURE_DATACONN();
+	DEBUG("fullpath:%s\n",fullpathname.c_str() );
 	DIR *dir = opendir(fullpathname.c_str() );
 	if(dir == NULL){
 		DEBUG("open dir return NULL,param:%s\n", fullpathname.c_str() );

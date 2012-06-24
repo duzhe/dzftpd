@@ -4,13 +4,16 @@
 #include <string>
 
 // chrooted
+class ftp_user;
 class ftp_dir
 {
 public:
-	std::string dir;
+	std::string cwd;
+	std::string root;
 public:
 	ftp_dir(){};
 	ftp_dir(const char *homepath);
+	int init(const ftp_user* user);
 	int cdup();
 	int cd(const char *pathname);
 	const char *pwd()const;
