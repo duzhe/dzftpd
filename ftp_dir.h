@@ -3,13 +3,11 @@
 
 #include <string>
 
-// chrooted
 class ftp_user;
 class ftp_dir
 {
 public:
 	std::string cwd;
-	std::string root;
 public:
 	ftp_dir(){};
 	ftp_dir(const char *homepath);
@@ -18,5 +16,6 @@ public:
 	int cd(const char *pathname);
 	const char *pwd()const;
 	std::string getfullpathname(const char *param)const;
+	bool test_access(const char *filename, char item);
 };
 #endif

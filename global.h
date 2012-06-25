@@ -1,5 +1,7 @@
 #include <stddef.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <stdlib.h>
 typedef int command_id_t;
 //struct request_t
 //{
@@ -30,7 +32,8 @@ typedef int command_id_t;
 #define MAX_REQUEST_LENGTH	MAX_PATH+16
 #define MAX_RESPONSE_LENGTH MAX_PATH+16
 
-#define BANNER "--- Welcome to use dzftp ---"
+#define BANNER "--- Welcome to use dzftpd ---"
+#define PROGRAME_NAME "dzftpd"
 
 #define USER 0
 
@@ -42,8 +45,16 @@ typedef int command_id_t;
 typedef unsigned int response_code_t;
 
 #include <stdio.h>
-#define DEBUG ::printf
+#define DEBUG(...) g_logger->log(LOG_DEBUG, __VA_ARGS__)
 
 #include "classes.h"
+#include "log_unix.h"
+#include "fs_unix.h"
 
-bool test_access(const char *filename, char item);
+//bool test_access(const char *filename, char item);
+
+class log_unix;
+extern log_unix * g_logger;
+
+class fs_unix;
+extern fs_unix * g_fs;

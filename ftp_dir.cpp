@@ -1,6 +1,10 @@
 #include "global.h"
 #include "ftp_dir.h"
 #include "ftp_user.h"
+#include <fcntl.h>
+#include <unistd.h>
+
+
 
 ftp_dir::ftp_dir(const char *homepath)
 {
@@ -9,11 +13,7 @@ ftp_dir::ftp_dir(const char *homepath)
 
 int ftp_dir::init(const ftp_user* user)
 {
-	root = user->rootpath();
 	cwd = user->homepath();
-	if (root == "/" && cwd == "/" ){
-		root = "";
-	}
 	return 0;
 }
 	
@@ -29,7 +29,7 @@ int ftp_dir::cdup()
 	}
 
 	std::string new_dir(cwd, 0, pos);
-	if(test_access(new_dir.c_str(), 'x') == false){
+	if(g_fs->test_access(new_dir.c_str(), 'x') == false){
 		return -1;
 	}
 	cwd.swap(new_dir);
@@ -39,7 +39,7 @@ int ftp_dir::cdup()
 int ftp_dir::cd(const char *pathname)
 {
 	const std::string &new_dir = getfullpathname(pathname);
-	if(test_access(new_dir.c_str(), 'x') == false ){
+	if(g_fs->test_access(new_dir.c_str(), 'x') == false ){
 		return -1;
 	}
 	cwd = new_dir;
@@ -55,17 +55,16 @@ std::string ftp_dir::getfullpathname(const char *param)const
 {
 	std::string fullpathname;
 	if (param == NULL){
-		fullpathname = root + cwd;
+		fullpathname = cwd;
 	}
 	else if (param[0] == '/'){
-		fullpathname = root + param;
+		fullpathname = param;
 	}
 	else if(cwd.length() == 1){
-		fullpathname = root + cwd + param;
+		fullpathname = cwd + param;
 	}
 	else{
-		fullpathname = root + cwd + '/' + param;
+		fullpathname = cwd + '/' + param;
 	}
 	return fullpathname;
 }
-	

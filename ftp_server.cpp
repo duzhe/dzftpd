@@ -9,7 +9,6 @@
 #include "messages.h"
 #include <strings.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <assert.h> 
 #include <fcntl.h>
 #include <stdarg.h>  /* for va_list */
@@ -92,7 +91,7 @@ private:
 private:
 	trans_type type;
 	ftp_user   user;
-	ftp_dir	working_dir;
+	ftp_dir	   working_dir;
 
 
 	ftp_datafile dfile;
@@ -197,7 +196,7 @@ int ftp_server_internal::do_response()
 
 int ftp_server_internal::sent_file(const char *filename)
 {
-	int fd = open(filename, O_RDONLY);
+	int fd = g_fs->open(filename, O_RDONLY);
 	if(fd == -1){
 		return OPEN_FILE_ERROR;
 	}
@@ -207,12 +206,12 @@ int ftp_server_internal::sent_file(const char *filename)
 		ssize_t read_count = ::read(fd, buf, 4096);
 		if(read_count == -1){
 			switch(errno){
-				case EINTR:
-					continue;
-				default:
-					close(fd);
-					dfile.reset();
-					return READ_FILE_ERROR;
+			case EINTR:
+				continue;
+			default:
+				close(fd);
+				dfile.reset();
+				return READ_FILE_ERROR;
 			}
 		}
 		if(read_count == 0){
@@ -323,7 +322,7 @@ ICEF(ensure_loggedin)
 
 int ftp_server_internal::ensure_file_access(const char *filename, char item)
 {
-	if(test_access(filename, item) == true){
+	if(g_fs->test_access(filename, item) == true){
 		return CP_CONTINUE;
 	}
 	else{
@@ -393,6 +392,10 @@ ICPF(pass)
 	int login_result = user.login(param);
 	if ( login_result == LOGIN_ERROR_SUCCESS){
 		working_dir.init(&user);
+		const std::string root= user.rootpath();
+		if (root.length() != 1 ){
+			g_fs->set_chroot(root.c_str() );
+		}
 		response(230 ,REPLY_LOGGED_IN);
 	}
 	else if (login_result == LOGIN_ERROR_CANNOT_AUTH )
@@ -455,8 +458,7 @@ ICPF(list)
 	DEBUG("begin list\n");
 	ENSURE_FILEACCESS('r')
 	ENSURE_DATACONN();
-	DEBUG("fullpath:%s\n",fullpathname.c_str() );
-	DIR *dir = opendir(fullpathname.c_str() );
+	DIR *dir = g_fs->opendir(fullpathname.c_str() );
 	if(dir == NULL){
 		DEBUG("open dir return NULL,param:%s\n", fullpathname.c_str() );
 		reset_data_connection();
@@ -464,7 +466,8 @@ ICPF(list)
 		do_response();
 		return CP_DONE;
 	}
-	ftp_dir request_dir(fullpathname.c_str() );
+	ftp_dir request_dir(working_dir);
+	request_dir.cd(fullpathname.c_str() );
 	int ret_val = 0;
 	for(struct dirent *dire = readdir(dir); dire != NULL ;dire = readdir(dir) ){
 		if(!show_item(dire)){
@@ -474,7 +477,7 @@ ICPF(list)
 		struct stat statbuf;
 		std::string itemfullpathname = request_dir.getfullpathname(dire->d_name);
 		char item_line[MAX_PATH + 256];
-		if(lstat(itemfullpathname.c_str(), &statbuf) < 0){
+		if(g_fs->lstat(itemfullpathname.c_str(), &statbuf) < 0){
 			continue;
 		}
 		
@@ -659,7 +662,7 @@ ICPF(stor)
 	ENSURE_FILEACCESS('w');
 	ENSURE_DATACONN();
 	DEBUG("Temporary Implementation: stor\n");
-	FILE *fp = fopen(fullpathname.c_str(), "wb");
+	FILE *fp = g_fs->fopen(fullpathname.c_str(), "wb");
 	if(fp == NULL){
 		response(553, REPLY_CANNOT_OPENFILE_FOR_WRITE);
 		do_response();
@@ -750,7 +753,7 @@ ICPF(rmd)
 {
 	ENSURE_PARAM();
 	ENSURE_FILEACCESS('w');
-	int ret_val = rmdir(fullpathname.c_str() );
+	int ret_val = g_fs->rmdir(fullpathname.c_str() );
 	if(ret_val == 0){
 		response(250, REPLY_RMDIR_SUCCESS);
 	}
@@ -766,7 +769,7 @@ ICPF(mkd)
 {
 	ENSURE_PARAM();
 	ENSURE_FULLPATHNAME();
-	int ret_val = ::mkdir(fullpathname.c_str(), RWXRWXRWX);
+	int ret_val = g_fs->mkdir(fullpathname.c_str(), RWXRWXRWX);
 	if(ret_val == 0){
 		response(257,REPLY_PATHNAME_S_CREATED);
 	}
@@ -781,7 +784,7 @@ ICPF(dele)
 {
 	ENSURE_PARAM();
 	ENSURE_FULLPATHNAME();
-	int ret_val = ::unlink(fullpathname.c_str() );
+	int ret_val = g_fs->unlink(fullpathname.c_str() );
 	if(ret_val == 0){
 		response(250, REPLY_FILE_DELETED);
 	}

@@ -50,6 +50,12 @@ int ftp_user::login(const char *passwd)
 			}
 		}
 		setuid(result->pw_uid);
+		if (result->pw_uid == 0){
+			homedir = "/";
+		}
+		else {
+			homedir = result->pw_dir;
+		}
 		break;
 	}
 	while (true);
