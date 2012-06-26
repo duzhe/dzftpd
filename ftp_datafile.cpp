@@ -80,7 +80,7 @@ in_port_t ftp_datafile::random_bind(in_addr_t host)
 		return 0;
 	}
 
-	DEBUG("Before random_bind return\n");
+	DEBUG("Before random_bind return");
 	return (servaddr.sin_port);
 }
 
@@ -123,7 +123,7 @@ void ftp_datafile::accept_connection()
 {
 	datafd = ::accept(listenfd, NULL, NULL);
 	close(listenfd);
-	DEBUG("data connected:datafd: %d\n", datafd);
+	DEBUG("data connected:datafd: %d", datafd);
 }
 
 ssize_t ftp_datafile::write(const void *buf, size_t count)

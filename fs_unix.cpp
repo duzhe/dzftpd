@@ -61,7 +61,7 @@ static const char *get_parent_path(const char *filename)
 bool fs_unix::test_access(const char *filename, char item)
 {
 	std::string realfilename = chroot +filename;
-	DEBUG("test_access: %s %c\n", realfilename.c_str(), item);
+	DEBUG("test_access: %s %c", realfilename.c_str(), item);
 	int mode;
 	switch(item){
 		case 'r':
@@ -81,11 +81,11 @@ bool fs_unix::test_access(const char *filename, char item)
 	}
 	int ret_val = access(realfilename.c_str(), mode);
 	if(ret_val == 0){
-		DEBUG("test_access OK: %s %c\n", realfilename.c_str(), item);
+		DEBUG("test_access OK: %s %c", realfilename.c_str(), item);
 		return true;
 	}
 	else if(item != 'w'){
-		DEBUG("test_access Fail: %s %c\n", realfilename.c_str(), item);
+		DEBUG("test_access Fail: %s %c", realfilename.c_str(), item);
 		return false;
 	}
 	const char *parent_path = get_parent_path(realfilename.c_str());

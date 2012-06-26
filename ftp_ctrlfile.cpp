@@ -34,7 +34,7 @@ void ftp_ctrlfile::set_nodelay()
 	int flag = 1;
 	int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag) );
 	if( ret == -1){
-		DEBUG("set_nodelay: setsockopt error\n");
+		DEBUG("set_nodelay: setsockopt error");
 	}
 }
 
@@ -62,7 +62,7 @@ int ftp_ctrlfile::printf(const char *format, ...)
 	int length = vsnprintf(buf, sizeof(buf), format, va);
 	va_end(va);
 
-	DEBUG("Client printf:%s\n", buf);
+	DEBUG("Client printf:%s", buf);
 	if(length < 0){
 		return -1;
 	}
@@ -80,7 +80,7 @@ int ftp_ctrlfile::printf(const char *format, ...)
 
 int ftp_ctrlfile::flush()
 {
-//	DEBUG("client flush\n");
+//	DEBUG("client flush");
 again:
 	int write_count = ::write(fd, write_buf, write_buf_pos - write_buf);
 	if(write_count == -1){
@@ -171,7 +171,7 @@ in_addr_t ftp_ctrlfile::get_host_addr()const
 		socklen_t addrsize = sizeof(addrin);
 		int ret_val = getsockname(fd, (struct sockaddr *)&addrin, &addrsize);
 		if(ret_val == -1){
-			DEBUG("getsockname error\n");
+			DEBUG("getsockname error");
 			return 0;
 		}
 		addr = addrin.sin_addr.s_addr;

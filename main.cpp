@@ -125,7 +125,7 @@ static void sig_child(int)
 		if(ret_val <= 0){
 			break;
 		}
-		DEBUG("child process exit: %d\n", exit_val);
+		DEBUG("child process exit: %d", exit_val);
 	}
 }
 

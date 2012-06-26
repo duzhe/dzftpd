@@ -133,10 +133,10 @@ int ftp_server_internal::serve()
 		if(ret_val < 0){
 			switch(ret_val){
 				case ERROR_CLIENT_CLOSED:
-					DEBUG("Client closed\n");
+					DEBUG("Client closed");
 					return 0;
 				default:
-					DEBUG("request error!\n");
+					DEBUG("request error!");
 					response(500, REPLY_SYNTAX_ERROR);
 					do_response();
 					continue;
@@ -237,13 +237,13 @@ int ftp_server_internal::wait_request(request *r)
 	if(ret_val != 0){
 		return ERROR_CLIENT_CLOSED;
 	}
-	DEBUG("Request Line:%s\n", request_line);
+	DEBUG("Request Line:%s", request_line);
 	return r->parse_from_line(request_line);
 }
 
 int ftp_server_internal::clearup()
 {
-	DEBUG("ftp_server_internal::clearup not implemented\n");
+	DEBUG("ftp_server_internal::clearup not implemented");
 	return 0;
 }
 
@@ -292,7 +292,7 @@ int ftp_server_internal::command_not_support()
 #define ICEF(F) int ftp_server_internal::F()
 ICEF(ensure_data_connection)
 {
-	DEBUG("Temporary Implementation: ensure_data_connection\n");
+	DEBUG("Temporary Implementation: ensure_data_connection");
 	datacnn_state state = dfile.state();
 	if(state == ready){
 		return no_data_connection();
@@ -305,7 +305,7 @@ ICEF(ensure_data_connection)
 		response(125, REPLY_DATACNN_ALREADY_OPEN);
 	}
 	else if(state == port_wait){
-		DEBUG("Port not implemented\n");
+		DEBUG("Port not implemented");
 		return no_data_connection();
 	}
 	do_response();
@@ -388,7 +388,7 @@ ICPF(user)
 
 ICPF(pass)
 {
-	DEBUG("Temporary Implementation: pass\n");
+	DEBUG("Temporary Implementation: pass");
 	int login_result = user.login(param);
 	if ( login_result == LOGIN_ERROR_SUCCESS){
 		working_dir.init(&user);
@@ -430,7 +430,7 @@ ICPF(pasv)
 	dfile.mode = PASV;
 	in_addr_t addr = ctrlfile->get_host_addr();
 	in_port_t port = dfile.random_bind(addr);
-	DEBUG("Random port:%d\n", (int)port);
+	DEBUG("Random port:%d", (int)port);
 	response_format(227, REPLY_ENTRY_PASV_MODE" (%d,%d,%d,%d,%d,%d)",
 			(int)((unsigned char *)(&addr))[0],
 			(int)((unsigned char *)(&addr))[1],
@@ -455,12 +455,12 @@ static inline bool show_item(struct dirent *dire)
 
 ICPF(list)
 {
-	DEBUG("begin list\n");
+	DEBUG("begin list");
 	ENSURE_FILEACCESS('r')
 	ENSURE_DATACONN();
 	DIR *dir = g_fs->opendir(fullpathname.c_str() );
 	if(dir == NULL){
-		DEBUG("open dir return NULL,param:%s\n", fullpathname.c_str() );
+		DEBUG("open dir return NULL,param:%s", fullpathname.c_str() );
 		reset_data_connection();
 		response(426, REPLY_TRANS_ABOUT);
 		do_response();
@@ -572,7 +572,7 @@ ICPF(type)
 		response(504, REPLY_NOT_IMPL_FOR_PARAM);
 	}
 	else{
-		DEBUG("Temporary Implementation: type\n");
+		DEBUG("Temporary Implementation: type");
 		switch(toupper(*param)){
 			case 'A':
 				this->type = type_A;
@@ -661,7 +661,7 @@ ICPF(stor)
 {
 	ENSURE_FILEACCESS('w');
 	ENSURE_DATACONN();
-	DEBUG("Temporary Implementation: stor\n");
+	DEBUG("Temporary Implementation: stor");
 	FILE *fp = g_fs->fopen(fullpathname.c_str(), "wb");
 	if(fp == NULL){
 		response(553, REPLY_CANNOT_OPENFILE_FOR_WRITE);
@@ -702,19 +702,19 @@ ICPF(stor)
 
 ICPF(syst)
 {
-	DEBUG("Not Implemented: syst\n");
+	DEBUG("Not Implemented: syst");
 	return command_not_support();
 }
 
 ICPF(feat)
 {
-	DEBUG("Not Implemented: feat\n");
+	DEBUG("Not Implemented: feat");
 	return command_not_support();
 }
 
 ICPF(acct)
 {
-	DEBUG("Not Implemented: acct\n");
+	DEBUG("Not Implemented: acct");
 	return command_not_support();
 }
 
@@ -812,7 +812,7 @@ do{
 
 #define PROCESS_MAP_END(NOT_SUPPORT_FUNCTION) \
 	else{ \
-		DEBUG("Command Not Support:%s %s\n", command, r->params == NULL?"":r->params);	\
+		DEBUG("Command Not Support:%s %s", command, r->params == NULL?"":r->params);	\
 		ret_val = NOT_SUPPORT_FUNCTION();\
 	}		\
 }while(false);

@@ -9,7 +9,7 @@
 
 static inline bool legal_command_length(int length)
 {
-	//DEBUG("Command length:%d\n", length);
+	//DEBUG("Command length:%d", length);
 	if(length == 3 || length == 4){
 		return true;
 	}
@@ -40,7 +40,7 @@ static inline bool legal_command_length(int length)
 int request::parse_from_line(const char *line)
 {
 	if(line == NULL){
-		DEBUG("Error: parse_from_lien :line is NULL\n");
+		DEBUG("Error: parse_from_lien :line is NULL");
 		return -1;
 	}
 	if(params != NULL){
@@ -56,7 +56,7 @@ int request::parse_from_line(const char *line)
 		; 
 	int command_length = command_end - line;
 	if(!legal_command_length(command_length ) ){
-		DEBUG("Error: parse_from_line: legal_command_length\n");
+		DEBUG("Error: parse_from_line: legal_command_length");
 		return -1;
 	}
 	
