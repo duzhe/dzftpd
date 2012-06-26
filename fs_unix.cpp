@@ -44,6 +44,7 @@ int fs_unix::lstat(const char *path, struct stat *buf)
 
 static const char *get_parent_path(const char *filename)
 {
+	// NOTE: not thread safe
 	static char parent_path[MAX_PATH];
 	char *p1 = parent_path;
 	const char *p2 = filename;
@@ -88,6 +89,6 @@ bool fs_unix::test_access(const char *filename, char item)
 		DEBUG("test_access Fail: %s %c", realfilename.c_str(), item);
 		return false;
 	}
-	const char *parent_path = get_parent_path(realfilename.c_str());
+	const char *parent_path = get_parent_path(filename);
 	return test_access(parent_path, 'w');
 }
